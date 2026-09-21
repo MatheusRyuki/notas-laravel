@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" role="img" aria-labelledby="titulo descricao">
+  <title id="titulo">Formas serenas</title><desc id="descricao">Composição abstrata com círculos e arcos em tons suaves.</desc>
+  <rect width="800" height="500" fill="#f2ece5"/>
+  <circle cx="105" cy="100" r="145" fill="#e4c9b8" opacity=".72"/>
+  <circle cx="705" cy="430" r="190" fill="#cbdccb" opacity=".8"/>
+  <path d="M270 0h230v230H270z" fill="#e7dca9" opacity=".62" transform="rotate(14 385 115)"/>
+  <path d="M178 520a210 210 0 0 1 420 0" fill="none" stroke="#b7abc9" stroke-width="54" opacity=".55"/>
+  <circle cx="630" cy="90" r="38" fill="#9cb9bd" opacity=".7"/>
+</svg>

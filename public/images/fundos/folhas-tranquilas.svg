@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" role="img" aria-labelledby="titulo descricao">
+  <title id="titulo">Folhas tranquilas</title><desc id="descricao">Padrão suave de folhas verdes sobre fundo claro.</desc>
+  <rect width="800" height="500" fill="#e8f0e5"/>
+  <g fill="none" stroke="#87a58a" stroke-width="8" stroke-linecap="round" opacity=".62">
+    <path d="M-30 430C120 330 165 165 112 20M830 92C680 146 625 312 688 510"/>
+    <path d="M40 370c52-10 82-43 91-93-49 6-82 39-91 93zm90-146c50-13 76-47 80-96-47 10-76 43-80 96zM665 205c-49-11-80-44-88-94 48 7 80 40 88 94zm-70 142c-51-7-85-37-98-86 49 3 84 33 98 86z" fill="#b8cfb8" stroke-width="5"/>
+  </g>
+  <circle cx="365" cy="90" r="45" fill="#f5df9d" opacity=".48"/>
+  <circle cx="455" cy="405" r="70" fill="#d9e8d7" opacity=".8"/>
+</svg>

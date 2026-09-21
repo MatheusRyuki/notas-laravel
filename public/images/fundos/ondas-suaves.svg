@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" role="img" aria-labelledby="titulo descricao">
+  <title id="titulo">Ondas suaves</title><desc id="descricao">Ondas azuis e areia em curvas amplas e suaves.</desc>
+  <rect width="800" height="500" fill="#edf4f5"/>
+  <path d="M0 130C145 55 240 210 390 132S650 48 800 132V0H0z" fill="#c9e2e8"/>
+  <path d="M0 310c155-92 268 75 420-18s255-33 380 20v188H0z" fill="#d7e9e7"/>
+  <path d="M0 392c168-70 280 62 450-18s260-28 350 10v116H0z" fill="#f0dfb9" opacity=".84"/>
+  <g fill="none" stroke="#6e9daa" stroke-width="5" opacity=".42"><path d="M-20 208c155-82 262 74 421-9s274-30 430 22"/><path d="M-20 246c155-82 262 74 421-9s274-30 430 22"/></g>
+</svg>

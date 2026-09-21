@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" role="img" aria-labelledby="titulo descricao">
+  <title id="titulo">Céu pontilhado</title><desc id="descricao">Céu lavanda suave com estrelas e pontos dourados.</desc>
+  <rect width="800" height="500" fill="#dddcef"/>
+  <circle cx="665" cy="102" r="76" fill="#f5e4a8" opacity=".74"/>
+  <path d="M646 30a76 76 0 0 0 84 126 76 76 0 1 1-84-126" fill="#bfc4df" opacity=".78"/>
+  <g fill="#7d82aa" opacity=".58"><circle cx="90" cy="96" r="7"/><circle cx="208" cy="62" r="4"/><circle cx="350" cy="132" r="6"/><circle cx="500" cy="70" r="4"/><circle cx="725" cy="256" r="6"/><circle cx="560" cy="345" r="5"/><circle cx="290" cy="394" r="7"/><circle cx="115" cy="330" r="5"/></g>
+  <g fill="#c49c49" opacity=".75"><path d="m164 190 7 17 18 7-18 7-7 18-7-18-18-7 18-7z"/><path d="m446 255 5 12 12 5-12 5-5 12-5-12-12-5 12-5z"/><path d="m676 386 6 14 14 6-14 6-6 14-6-14-14-6 14-6z"/></g>
+</svg>

@@ -1,0 +1,58 @@
+name: notas
+services:
+  laravel.test:
+    build:
+      context: ./vendor/laravel/sail/runtimes/8.5
+      dockerfile: Dockerfile
+      args:
+        WWWGROUP: '${WWWGROUP:-1000}'
+    image: notas-app:php85
+    ports:
+      - '127.0.0.1:${APP_PORT:-8004}:80'
+      - '127.0.0.1:${VITE_PORT:-5174}:${VITE_PORT:-5174}'
+    environment:
+      WWWUSER: '${WWWUSER:-1000}'
+      LARAVEL_SAIL: 1
+      XDEBUG_MODE: '${SAIL_XDEBUG_MODE:-off}'
+      IGNITION_LOCAL_SITES_PATH: '${PWD}'
+    volumes:
+      - '.:/var/www/html'
+    networks:
+      - notas
+    depends_on:
+      mysql:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+  mysql:
+    image: mysql:8.4
+    ports:
+      - '127.0.0.1:${FORWARD_DB_PORT:-33061}:3306'
+    environment:
+      MYSQL_ROOT_PASSWORD: '${DB_PASSWORD}'
+      MYSQL_ROOT_HOST: '%'
+      MYSQL_DATABASE: '${DB_DATABASE}'
+      MYSQL_USER: '${DB_USERNAME}'
+      MYSQL_PASSWORD: '${DB_PASSWORD}'
+    volumes:
+      - 'notas-mysql:/var/lib/mysql'
+    networks:
+      - notas
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-p${DB_PASSWORD}']
+      retries: 10
+      timeout: 5s
+      interval: 5s
+  mailpit:
+    image: axllent/mailpit@sha256:74d609a42ec279aa63c6b4622a6fa9b5408d1ad5b1d76a1c4be40a265ce0863d
+    ports:
+      - '127.0.0.1:${FORWARD_MAILPIT_DASHBOARD_PORT:-8026}:8025'
+    networks:
+      - notas
+networks:
+  notas:
+    name: notas-rede
+    driver: bridge
+volumes:
+  notas-mysql:
+    name: notas-mysql
