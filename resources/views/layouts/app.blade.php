@@ -14,11 +14,10 @@
     <div class="estrutura">
         <aside class="barra-lateral">
             <nav aria-label="Navegação principal">
-                <a href="{{ route('notas.inicio', $consultaNavegacao) }}" class="{{ request()->routeIs('notas.inicio') ? 'selecionado' : '' }}" @if(request()->routeIs('notas.inicio')) aria-current="page" @endif><span aria-hidden="true">▤</span> Minhas notas</a>
-                <a href="{{ route('notas.arquivadas', $consultaNavegacao) }}" class="{{ request()->routeIs('notas.arquivadas') ? 'selecionado' : '' }}" @if(request()->routeIs('notas.arquivadas')) aria-current="page" @endif><span aria-hidden="true">▱</span> Arquivadas</a>
-                <a href="{{ route('lixeira.index', $consultaNavegacao) }}" class="{{ request()->routeIs('lixeira.*') ? 'selecionado' : '' }}" @if(request()->routeIs('lixeira.*')) aria-current="page" @endif><span aria-hidden="true">♲</span> Lixeira</a>
+                <a href="{{ route('notas.inicio', $consultaNavegacao) }}" class="{{ request()->routeIs('notas.inicio') ? 'selecionado' : '' }}" @if(request()->routeIs('notas.inicio')) aria-current="page" @endif><x-icone nome="notas" /> Minhas notas</a>
+                <a href="{{ route('notas.arquivadas', $consultaNavegacao) }}" class="{{ request()->routeIs('notas.arquivadas') ? 'selecionado' : '' }}" @if(request()->routeIs('notas.arquivadas')) aria-current="page" @endif><x-icone nome="arquivo" /> Arquivadas</a>
+                <a href="{{ route('lixeira.index', $consultaNavegacao) }}" class="{{ request()->routeIs('lixeira.*') ? 'selecionado' : '' }}" @if(request()->routeIs('lixeira.*')) aria-current="page" @endif><x-icone nome="lixeira" /> Lixeira</a>
             </nav>
-            <div class="aviso-lateral"><span class="etiqueta">EM CONSTRUÇÃO</span><p>Um começo simples.<br>Novas possibilidades em breve.</p><span>Etapa 07</span></div>
         </aside>
         <main id="conteudo" class="conteudo">
             @isset($header)<header class="cabecalho-pagina">{{ $header }}</header>@endisset

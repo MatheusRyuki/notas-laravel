@@ -20,8 +20,13 @@ $maxWidth = [
         show: @js($show),
         retornoFoco: null,
         focusables() {
-            const selector = 'a, button, input:not([type=\'hidden\']), textarea, select, details, [tabindex]:not([tabindex=\'-1\'])';
-            return [...$el.querySelectorAll(selector)].filter(el => ! el.hasAttribute('disabled'));
+            const selector = 'a[href], button, input:not([type=\'hidden\']), textarea, select, details, [tabindex]';
+            return [...$el.querySelectorAll(selector)].filter((el) => {
+                if (el.hasAttribute('disabled') || el.getAttribute('tabindex') === '-1') return false;
+                if (! (el.offsetWidth || el.offsetHeight || el.getClientRects().length)) return false;
+                if (el.matches('input[type=\'radio\']') && ! el.checked) return false;
+                return true;
+            });
         },
         firstFocusable() { return this.focusables().find(el => el.hasAttribute('autofocus')) || this.focusables()[0] },
         lastFocusable() { return this.focusables().slice(-1)[0] },

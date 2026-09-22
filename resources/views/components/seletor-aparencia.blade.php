@@ -15,7 +15,6 @@
             <div>
                 <input
                     class="radio-aparencia"
-                    tabindex="-1"
                     type="radio"
                     id="{{ $id }}-tipo-{{ $tipo->value }}"
                     name="tipo_aparencia"
@@ -24,10 +23,6 @@
                 >
                 <label
                     for="{{ $id }}-tipo-{{ $tipo->value }}"
-                    tabindex="0"
-                    role="radio"
-                    @if ($modelo) x-bind:aria-checked="{{ $modelo }}.tipo_aparencia === '{{ $tipo->value }}'" @else aria-checked="{{ $tipoSelecionado === $tipo->value ? 'true' : 'false' }}" @endif
-                    x-on:keydown="if ($event.key === ' ' || $event.key === 'Enter') { $event.preventDefault(); $el.previousElementSibling.click(); }"
                 >{{ $tipo === \App\Enums\TipoAparencia::Cor ? 'Cores' : 'Fundos' }}</label>
             </div>
         @endforeach
@@ -52,7 +47,6 @@
                 <div class="opcao-fundo">
                     <input
                         class="radio-aparencia"
-                        tabindex="-1"
                         type="radio"
                         id="{{ $id }}-fundo-{{ $fundo->value }}"
                         name="fundo"
@@ -61,14 +55,10 @@
                     >
                     <label
                         for="{{ $id }}-fundo-{{ $fundo->value }}"
-                        tabindex="0"
-                        role="radio"
-                        @if ($modelo) x-bind:aria-checked="{{ $modelo }}.fundo === '{{ $fundo->value }}'" @else aria-checked="{{ $fundoSelecionado === $fundo->value ? 'true' : 'false' }}" @endif
-                        x-on:keydown="if ($event.key === ' ' || $event.key === 'Enter') { $event.preventDefault(); $el.previousElementSibling.click(); }"
                     >
                         <span class="miniatura-fundo" style="background-image:url('{{ asset($fundo->caminho()) }}')" aria-hidden="true"></span>
                         <span>{{ $fundo->rotulo() }}</span>
-                        <span class="marca-selecionada" aria-hidden="true">✓</span>
+                        <span class="marca-selecionada" aria-hidden="true"><x-icone nome="check" /></span>
                     </label>
                 </div>
             @endforeach

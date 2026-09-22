@@ -1,6 +1,6 @@
 <x-app-layout>
     <div class="confirmacao-pagina" x-data x-init="$nextTick(() => $refs.cancelar.focus())" x-on:keydown.escape.window="window.location.href = @js(route('lixeira.index', $termo === '' ? [] : ['q' => $termo]))">
-        <section class="confirmacao-exclusao" role="alertdialog" aria-modal="true" aria-labelledby="titulo-confirmacao" aria-describedby="descricao-confirmacao">
+        <section class="confirmacao-exclusao" aria-labelledby="titulo-confirmacao" aria-describedby="descricao-confirmacao">
             <span class="etiqueta">EXCLUSÃO DEFINITIVA</span>
             <h1 id="titulo-confirmacao">Excluir esta nota para sempre?</h1>
             <p id="descricao-confirmacao">A nota <strong>{{ $nota->titulo ?: \Illuminate\Support\Str::limit($nota->descricao, 80) }}</strong> será removida definitivamente. Esta ação não poderá ser desfeita.</p>

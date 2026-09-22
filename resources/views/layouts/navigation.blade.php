@@ -3,6 +3,6 @@
     <div class="conta">
         <span class="nome-usuario" title="{{ Auth::user()->name }}">{{ Auth::user()->name }}</span>
         <a class="link-perfil" href="{{ route('profile.edit') }}">Meu perfil</a>
-        <form method="POST" action="{{ route('logout') }}">@csrf<button class="botao-sair" type="submit">Sair <span aria-hidden="true">↗</span></button></form>
+        <form method="POST" action="{{ route('logout') }}">@csrf<button class="botao-sair" type="submit">Sair <x-icone nome="sair" /></button></form>
     </div>
 </header>

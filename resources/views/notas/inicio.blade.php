@@ -25,19 +25,18 @@ $urlsFundos = collect(\App\Enums\FundoNota::cases())
                 <h1>{{ $secaoArquivadas ? 'Arquivadas' : 'Minhas notas' }}</h1>
                 <p>{{ $secaoArquivadas ? 'Notas guardadas continuam disponíveis para consulta e edição.' : 'Um lugar para organizar o que passa pela sua cabeça.' }}</p>
             </div>
-            <span class="selo-etapa">Etapa 07 · Busca</span>
         </div>
 
         <div class="ferramentas-notas">
             <x-busca-notas :action="$secaoArquivadas ? route('notas.arquivadas') : route('notas.inicio')" :termo="$termo" :placeholder="$secaoArquivadas ? 'Buscar nas arquivadas' : 'Buscar nas suas notas'" />
             @unless ($secaoArquivadas)
-                <button class="nova-nota" type="button" x-on:click="$dispatch('open-modal', 'criar-nota')"><span aria-hidden="true">＋</span> Criar nota</button>
+                <button class="nova-nota" type="button" x-on:click="$dispatch('open-modal', 'criar-nota')"><x-icone nome="mais" /> Criar nota</button>
             @endunless
         </div>
 
-        <div class="estado-consulta" aria-live="polite" aria-atomic="true">
-            <span x-cloak x-show="buscaCarregando">Buscando…</span>
-            <span x-cloak x-show="erroBusca" x-text="erroBusca" class="falha-busca" role="alert"></span>
+        <div class="estado-consulta">
+            <span x-cloak x-show="buscaCarregando" role="status" aria-live="polite">Buscando…</span>
+            <span x-cloak x-show="erroBusca" x-text="erroBusca" class="falha-busca" role="alert" aria-atomic="true"></span>
         </div>
         <div id="resultados-busca" x-ref="resultados" x-bind:aria-busy="buscaCarregando.toString()">
             @include('notas._resultados')
@@ -52,7 +51,7 @@ $urlsFundos = collect(\App\Enums\FundoNota::cases())
                 <input type="hidden" name="q" value="{{ $termo ?? '' }}">
                 <div class="cabecalho-modal">
                     <div><span class="etiqueta">NOVA NOTA</span><h2 id="titulo-modal-criacao">Registre uma ideia</h2></div>
-                    <button type="button" class="fechar-modal" x-on:click="$dispatch('close-modal', 'criar-nota')" aria-label="Cancelar e fechar">×</button>
+                    <button type="button" class="fechar-modal" x-on:click="$dispatch('close-modal', 'criar-nota')" aria-label="Cancelar e fechar"><x-icone nome="fechar" /></button>
                 </div>
                 <p class="ajuda-formulario">Preencha pelo menos um campo. Título: até 255 caracteres. Descrição: até 10.000.</p>
                 <div class="grupo-campo">
@@ -77,11 +76,11 @@ $urlsFundos = collect(\App\Enums\FundoNota::cases())
         </x-modal>
         @endunless
 
-        <x-modal name="editar-nota" max-width="xl" titulo-id="titulo-modal-edicao">
+        <x-modal name="editar-nota" max-width="xl" focusable titulo-id="titulo-modal-edicao">
             <form class="formulario-nota" x-bind:class="classeAparencia(edicao)" x-bind:style="estiloAparencia(edicao)" x-on:submit.prevent="salvarEdicao">
                 <div class="cabecalho-modal">
                     <div><span class="etiqueta">EDITAR NOTA</span><h2 id="titulo-modal-edicao">Revise sua ideia</h2></div>
-                    <button type="button" class="fechar-modal" x-on:click="$dispatch('close-modal', 'editar-nota')" aria-label="Cancelar e fechar">×</button>
+                    <button type="button" class="fechar-modal" x-on:click="$dispatch('close-modal', 'editar-nota')" aria-label="Cancelar e fechar"><x-icone nome="fechar" /></button>
                 </div>
 
                 <div x-show="carregandoEdicao" class="carregando-nota" role="status">Abrindo nota…</div>

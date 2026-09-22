@@ -1,7 +1,7 @@
 @props(['action', 'termo' => '', 'placeholder' => 'Buscar nas suas notas'])
 
 <form method="GET" action="{{ $action }}" class="campo-busca" role="search" x-on:submit.prevent="buscarAgora">
-    <span aria-hidden="true">⌕</span>
+    <x-icone nome="busca" class="icone icone-busca" />
     <label for="busca" class="sr-only">Buscar por título ou descrição</label>
     <input
         id="busca"

@@ -12,7 +12,6 @@
             <div class="opcao-cor">
                 <input
                     class="radio-aparencia"
-                    tabindex="-1"
                     type="radio"
                     id="{{ $id }}-{{ $opcao->value }}"
                     name="{{ $name }}"
@@ -21,14 +20,10 @@
                 >
                 <label
                     for="{{ $id }}-{{ $opcao->value }}"
-                    tabindex="0"
-                    role="radio"
-                    @if ($modelo) x-bind:aria-checked="{{ $modelo }} === '{{ $opcao->value }}'" @else aria-checked="{{ $selecionada === $opcao->value ? 'true' : 'false' }}" @endif
-                    x-on:keydown="if ($event.key === ' ' || $event.key === 'Enter') { $event.preventDefault(); $el.previousElementSibling.click(); }"
                 >
                     <span class="amostra-cor cor-amostra--{{ $opcao->value }}" aria-hidden="true"></span>
                     <span>{{ $opcao->rotulo() }}</span>
-                    <span class="marca-selecionada" aria-hidden="true">✓</span>
+                    <span class="marca-selecionada" aria-hidden="true"><x-icone nome="check" /></span>
                 </label>
             </div>
         @endforeach

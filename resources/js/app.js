@@ -127,7 +127,7 @@ leitura: { titulo: '', descricao: '', tipo_aparencia: 'cor', cor: 'padrao', fund
             if (! resposta.ok) throw new Error('Não foi possível consultar esta nota.');
             this.leitura = await resposta.json();
         } catch (erro) {
-            this.erroLeitura = erro.message;
+            this.erroLeitura = 'Não foi possível consultar esta nota. Tente novamente.';
         } finally {
             this.carregandoLeitura = false;
         }
@@ -165,7 +165,7 @@ leitura: { titulo: '', descricao: '', tipo_aparencia: 'cor', cor: 'padrao', fund
             this.urlAtualizacao = nota.url_atualizacao;
             this.$nextTick(() => setTimeout(() => document.getElementById('editar-titulo')?.focus(), 100));
         } catch (erro) {
-            this.erroCarregamento = erro.message;
+            this.erroCarregamento = 'Não foi possível abrir esta nota. Tente novamente.';
         } finally {
             this.carregandoEdicao = false;
         }
@@ -203,7 +203,7 @@ leitura: { titulo: '', descricao: '', tipo_aparencia: 'cor', cor: 'padrao', fund
             await resposta.json();
             window.location.reload();
         } catch (erro) {
-            this.erroCarregamento = erro.message;
+            this.erroCarregamento = 'Não foi possível salvar. Tente novamente.';
         } finally {
             this.salvandoEdicao = false;
         }

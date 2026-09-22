@@ -18,7 +18,7 @@ $identificacao = $nota->titulo ?: \Illuminate\Support\Str::limit($nota->descrica
     @if($nota->fixada) data-fixada="true" @endif
 >
     @if ($nota->fixada)
-        <span class="estado-fixada"><span aria-hidden="true">●</span> Fixada</span>
+        <span class="estado-fixada"><x-icone nome="fixada" /> Fixada</span>
     @endif
     @if ($emLixeira && $nota->arquivada)
         <span class="estado-origem">Antes: Arquivadas</span>
@@ -41,9 +41,9 @@ $identificacao = $nota->titulo ?: \Illuminate\Support\Str::limit($nota->descrica
                     @csrf
                     <input type="hidden" name="q" value="{{ $termoBusca }}">
                     @method('PATCH')
-                    <button type="submit" class="botao-restaurar" x-bind:disabled="enviando" x-on:click.stop aria-label="Restaurar nota {{ $identificacao }}"><span aria-hidden="true">↶</span> Restaurar</button>
+                    <button type="submit" class="botao-restaurar" x-bind:disabled="enviando" x-on:click.stop aria-label="Restaurar nota {{ $identificacao }}"><x-icone nome="restaurar" /> Restaurar</button>
                 </form>
-                <a class="botao-excluir" href="{{ route('lixeira.confirmar-exclusao', ['nota' => $nota->id, 'q' => $termoBusca ?: null]) }}" aria-label="Excluir definitivamente nota {{ $identificacao }}"><span aria-hidden="true">×</span> Excluir</a>
+                <a class="botao-excluir" href="{{ route('lixeira.confirmar-exclusao', ['nota' => $nota->id, 'q' => $termoBusca ?: null]) }}" aria-label="Excluir definitivamente nota {{ $identificacao }}"><x-icone nome="excluir" /> Excluir</a>
             @else
                 @unless ($emArquivadas)
                     <form method="POST" action="{{ route('notas.fixacao', $nota) }}" x-data="{ enviando: false }" x-on:submit="if (enviando) { $event.preventDefault() } else { enviando = true }">
@@ -51,7 +51,7 @@ $identificacao = $nota->titulo ?: \Illuminate\Support\Str::limit($nota->descrica
                         <input type="hidden" name="q" value="{{ $termoBusca }}">
                         @method('PATCH')
                         <input type="hidden" name="fixada" value="{{ $nota->fixada ? '0' : '1' }}">
-                        <button type="submit" class="botao-fixacao" x-bind:disabled="enviando" x-on:click.stop aria-label="{{ $nota->fixada ? 'Desafixar' : 'Fixar' }} nota {{ $identificacao }}" aria-pressed="{{ $nota->fixada ? 'true' : 'false' }}"><span aria-hidden="true">{{ $nota->fixada ? '◆' : '◇' }}</span><span>{{ $nota->fixada ? 'Desafixar' : 'Fixar' }}</span></button>
+                        <button type="submit" class="botao-fixacao" x-bind:disabled="enviando" x-on:click.stop aria-label="{{ $nota->fixada ? 'Desafixar' : 'Fixar' }} nota {{ $identificacao }}" aria-pressed="{{ $nota->fixada ? 'true' : 'false' }}"><x-icone :nome="$nota->fixada ? 'fixada' : 'fixar'" /><span>{{ $nota->fixada ? 'Desafixar' : 'Fixar' }}</span></button>
                     </form>
                 @endunless
                 <form method="POST" action="{{ route('notas.arquivamento', $nota) }}" x-data="{ enviando: false }" x-on:submit="if (enviando) { $event.preventDefault() } else { enviando = true }">
@@ -59,13 +59,13 @@ $identificacao = $nota->titulo ?: \Illuminate\Support\Str::limit($nota->descrica
                     <input type="hidden" name="q" value="{{ $termoBusca }}">
                     @method('PATCH')
                     <input type="hidden" name="arquivada" value="{{ $emArquivadas ? '0' : '1' }}">
-                    <button type="submit" class="botao-arquivamento" x-bind:disabled="enviando" x-on:click.stop aria-label="{{ $emArquivadas ? 'Desarquivar' : 'Arquivar' }} nota {{ $identificacao }}"><span aria-hidden="true">{{ $emArquivadas ? '↥' : '▱' }}</span><span>{{ $emArquivadas ? 'Desarquivar' : 'Arquivar' }}</span></button>
+                    <button type="submit" class="botao-arquivamento" x-bind:disabled="enviando" x-on:click.stop aria-label="{{ $emArquivadas ? 'Desarquivar' : 'Arquivar' }} nota {{ $identificacao }}"><x-icone :nome="$emArquivadas ? 'desarquivar' : 'arquivo'" /><span>{{ $emArquivadas ? 'Desarquivar' : 'Arquivar' }}</span></button>
                 </form>
                 <form method="POST" action="{{ route('notas.mover-lixeira', $nota) }}" x-data="{ enviando: false }" x-on:submit="if (enviando) { $event.preventDefault() } else { enviando = true }">
                     @csrf
                     <input type="hidden" name="q" value="{{ $termoBusca }}">
                     @method('DELETE')
-                    <button type="submit" class="botao-lixeira" x-bind:disabled="enviando" x-on:click.stop aria-label="Mover nota {{ $identificacao }} para a lixeira"><span aria-hidden="true">♲</span><span>Lixeira</span></button>
+                    <button type="submit" class="botao-lixeira" x-bind:disabled="enviando" x-on:click.stop aria-label="Mover nota {{ $identificacao }} para a lixeira"><x-icone nome="lixeira" /><span>Lixeira</span></button>
                 </form>
             @endif
         </div>

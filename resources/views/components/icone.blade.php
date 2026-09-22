@@ -1,0 +1,65 @@
+@props(['nome', 'class' => 'icone'])
+
+<svg
+    {{ $attributes->merge(['class' => $class]) }}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+    focusable="false"
+>
+    @switch($nome)
+        @case('notas')
+            <path d="M6 4.5h12a1.5 1.5 0 0 1 1.5 1.5v12a1.5 1.5 0 0 1-1.5 1.5H6A1.5 1.5 0 0 1 4.5 18V6A1.5 1.5 0 0 1 6 4.5Z" />
+            <path d="M8 9h8M8 13h8M8 17h5" />
+            @break
+        @case('arquivo')
+            <path d="M4 7.5h16v11A1.5 1.5 0 0 1 18.5 20h-13A1.5 1.5 0 0 1 4 18.5v-11Z" />
+            <path d="M3.5 4h17v3.5h-17zM9 11.5h6" />
+            @break
+        @case('desarquivar')
+            <path d="M4 7.5h16v11A1.5 1.5 0 0 1 18.5 20h-13A1.5 1.5 0 0 1 4 18.5v-11Z" />
+            <path d="M3.5 4h17v3.5h-17zM12 16v-5M9.5 13.5 12 11l2.5 2.5" />
+            @break
+        @case('lixeira')
+            <path d="M5.5 7h13M9 7V4.5h6V7M7.5 7l.7 12h7.6l.7-12M10 10.5v5M14 10.5v5" />
+            @break
+        @case('mais')
+            <path d="M12 5v14M5 12h14" />
+            @break
+        @case('busca')
+            <circle cx="10.5" cy="10.5" r="5.5" />
+            <path d="m15 15 4.5 4.5" />
+            @break
+        @case('fixada')
+            <path d="m8 4 8 8M14.5 3.5l6 6-3 1.5-4.5 4.5-1.5 3-6-6 3-1.5L13 6.5l1.5-3Z" fill="currentColor" stroke="none" />
+            <path d="m9 15-5 5" />
+            @break
+        @case('fixar')
+            <path d="m8 4 8 8M14.5 3.5l6 6-3 1.5-4.5 4.5-1.5 3-6-6 3-1.5L13 6.5l1.5-3Z" />
+            <path d="m9 15-5 5" />
+            @break
+        @case('restaurar')
+            <path d="M4.5 8.5V4.5h4" />
+            <path d="M5.2 7a8 8 0 1 1-1 8" />
+            @break
+        @case('excluir')
+            <path d="m7 7 10 10M17 7 7 17" />
+            @break
+        @case('fechar')
+            <path d="m6 6 12 12M18 6 6 18" />
+            @break
+        @case('sair')
+            <path d="M10 5H6.5A1.5 1.5 0 0 0 5 6.5v11A1.5 1.5 0 0 0 6.5 19H10M13 8l4 4-4 4M9 12h8" />
+            @break
+        @case('seta-direita')
+            <path d="M5 12h14M14 7l5 5-5 5" />
+            @break
+        @case('check')
+            <path d="m6 12 4 4 8-8" />
+            @break
+    @endswitch
+</svg>
