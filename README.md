@@ -1,4 +1,4 @@
-# Notas — etapa 7
+# Notas
 
 Aplicativo de notas com interface própria, inspirado no Google Keep, desenvolvido em Laravel com ambiente Docker/Sail independente.
 
@@ -8,7 +8,7 @@ Aplicativo de notas com interface própria, inspirado no Google Keep, desenvolvi
 ## Funcionalidades disponíveis
 
 - Cadastro, login, logout e recuperação/redefinição de senha com Breeze e Blade.
-- Perfil básico: nome, e-mail e senha.
+- Perfil: nome, e-mail, senha e fuso horário.
 - Página inicial protegida, com nome real do usuário, perfil e saída.
 - Criação, listagem e edição de notas em modal.
 - Fixação e desafixação com estado textual e grupos **Fixadas** e **Outras**.
@@ -16,7 +16,13 @@ Aplicativo de notas com interface própria, inspirado no Google Keep, desenvolvi
 - Galeria de quatro fundos SVG locais na criação e na edição.
 - Arquivamento e desarquivamento em uma página própria, com edição das notas arquivadas.
 - Lixeira por exclusão lógica, consulta somente leitura, restauração ao destino anterior e exclusão definitiva confirmada.
-- Busca por título ou descrição enquanto o usuário digita, nas seções Notas, Arquivadas e Lixeira.
+- Busca por título, descrição e itens de lista enquanto o usuário digita, nas seções Notas, Arquivadas e Lixeira.
+- Ordenação, etiquetas pessoais, listas de tarefas e ações em lote.
+- Desfazer arquivamento e envio à lixeira por cinco minutos.
+- Cópia e download UTF-8 das notas.
+- Lembretes com notificações internas e e-mail opcional no Mailpit.
+- Compartilhamento com proprietário, editor e leitor, convites internos e conflitos por revisão.
+- Leitura, criação e edição offline com fila idempotente e resolução de conflitos.
 - Prévia de aparência no modal, persistida somente depois de salvar.
 - Cancelamento, fechamento e Escape sem alterar texto ou aparência salvos.
 - Validações junto aos campos, proteção CSRF e bloqueio de envios duplicados.
@@ -29,7 +35,7 @@ A interface e os fundos são próprios do projeto e apenas inspirados no Google 
 
 ## Notas e segurança
 
-O proprietário vem exclusivamente da sessão autenticada. O cliente não pode escolher ou alterar `usuario_id`. A policy impede leitura, edição, fixação, arquivamento, movimentação para a lixeira, restauração e exclusão definitiva de notas de outra conta, inclusive por URL direta ou requisição manipulada.
+O proprietário vem exclusivamente da sessão autenticada. O cliente não pode escolher ou alterar `usuario_id`. A policy aplica propriedade e papéis de colaboração em todas as rotas. Editor altera somente conteúdo e aparência; leitor apenas consulta e exporta; estados e participantes pertencem ao proprietário.
 
 - Título: opcional quando há descrição, até 255 caracteres.
 - Descrição: opcional quando há título, até 10.000 caracteres.
@@ -77,6 +83,57 @@ Título e descrição são consultados com parâmetros vinculados. `%`, `_` e `!
 Com JavaScript, há debounce de 300 ms, cancelamento da requisição anterior e uma sequência que impede respostas antigas ou de outra seção de substituir o resultado atual. O campo mantém foco. Carregamento, nenhum resultado e falha de comunicação têm estados separados em pt-BR. Os cartões retornados são reinicializados pelo Alpine, sem duplicar manipuladores.
 
 A consulta acompanha criação, edição, fixação, arquivamento, lixeira, restauração e exclusão. Após uma mutação, o servidor recalcula a lista; uma nota que deixou de corresponder desaparece.
+
+## Expansões funcionais
+
+### Desfazer, ordenação e exportação
+
+Arquivar e mover para a lixeira, individualmente ou em lote, geram uma operação de desfazer vinculada ao usuário. O token vale cinco minutos, pode ser usado uma vez e só reverte a nota quando a revisão esperada ainda é a atual. O lote é revertido integralmente ou permanece inalterado. Exclusão definitiva não oferece desfazer.
+
+As três seções aceitam `ordem=atualizacao|criacao|titulo`. Na tela principal, Fixadas continuam antes de Outras; o critério escolhido é aplicado dentro dos grupos, com ID como desempate. Na ordem alfabética, notas sem título ficam por último.
+
+Toda nota consultável pode ser copiada como texto ou baixada em `.txt` UTF-8. Listas usam `[x]` e `[ ]`; IDs, papéis e metadados internos não são exportados. Se a área de transferência falhar, a interface oferece o download.
+
+### Etiquetas, listas e lotes
+
+Etiquetas têm até 60 caracteres, removem espaços externos, condensam espaços internos e são únicas por usuário sem diferenciar maiúsculas. As associações são pessoais até em notas compartilhadas. O filtro aceita várias etiquetas com semântica "qualquer uma" e combina com seção e busca. Excluir uma etiqueta preserva as notas.
+
+Notas podem ser de texto ou lista. O tipo é escolhido na criação e não muda na edição. Uma lista exige de 1 a 100 itens não vazios; cada item aceita até 500 caracteres, conclusão e posição. Os botões de subir e descer permitem reordenação por teclado. Busca e exportação incluem itens concluídos e pendentes.
+
+O modo de seleção envia apenas os IDs marcados. Arquivar, desarquivar, mover, restaurar e aplicar ou remover etiquetas validam todos os registros dentro de uma transação. Se um ID, estado ou permissão falhar, o lote inteiro é recusado. Exclusão definitiva continua individual.
+
+### Lembretes
+
+Cada usuário pode manter um lembrete pessoal por nota acessível, reagendar ou cancelar. O horário informado usa o fuso do perfil (padrão `America/Sao_Paulo`) e é armazenado em UTC. O processamento cria uma notificação interna persistida e, quando escolhido, enfileira e-mail exclusivamente para o Mailpit local.
+
+Arquivar mantém o lembrete. A lixeira o suspende; restaurar reativa apenas horários futuros. Horários vencidos exigem reagendamento. Revogação de acesso e exclusão definitiva impedem envios posteriores. A chave única da notificação e o lock da linha evitam duplicação; falhas de e-mail seguem as tentativas e a tabela de falhas padrão da fila.
+
+Os serviços `queue` e `scheduler` do Compose executam `queue:work` e `schedule:work`. O scheduler chama `lembretes:processar` a cada minuto.
+
+### Compartilhamento e conflitos
+
+Convites internos usam o e-mail exato de uma conta cadastrada e só concedem acesso depois da aceitação. Não existe diretório público.
+
+| Papel | Permissões |
+| --- | --- |
+| Proprietário | Conteúdo, aparência, participantes e todos os estados da nota |
+| Editor | Consulta e edita título, descrição, itens e aparência |
+| Leitor | Consulta, copia e baixa |
+
+Somente o proprietário fixa, arquiva, envia para a lixeira, restaura ou exclui. Etiquetas e lembretes continuam pessoais. Uma nota compartilhada na lixeira fica visível apenas ao proprietário; a restauração preserva participantes ainda válidos.
+
+Cada alteração avança `revisao`. O salvamento bloqueia a linha e compara a revisão recebida; uma versão antiga recebe HTTP 409 com a versão local e a atual para decisão explícita. Revogar ou sair remove lembretes e etiquetas pessoais daquele participante.
+
+### Offline e sincronização
+
+Depois do primeiro login online, um service worker armazena apenas o shell estático e o IndexedDB separa notas, operações e conflitos por conta. Respostas autenticadas não entram no cache global. O shell permite consultar dados previamente disponibilizados, criar texto ou lista e editar conteúdo e aparência conforme a última permissão conhecida.
+
+Cada operação possui UUID, sequência e revisão base. O servidor guarda o resultado por usuário e UUID, portanto repetir uma criação depois de perder a resposta não duplica a nota. Operações seguem a ordem local; conflitos não sobrescrevem automaticamente. Exclusão ou revogação retorna `revogado_ou_excluido` e remove a cópia correspondente do armazenamento da aplicação.
+
+Compartilhamento, lembretes, etiquetas, lotes e operações destrutivas exigem conexão. Sair offline não afirma que a sessão do servidor foi encerrada. No logout online, o servidor responde antes da limpeza local; pendências exigem confirmação. Trocar de conta elimina dados da conta anterior e informa quando havia pendências descartadas.
+
+O armazenamento do navegador pode ser apagado pelo usuário ou pelo sistema. Uma revogação não apaga instantaneamente uma cópia em um dispositivo ainda desconectado. O modo offline não substitui backup.
+
 As decisões do esquema estão em [docs/modelo-nota.md](docs/modelo-nota.md).
 
 ## Instalação
@@ -126,6 +183,7 @@ A dispensa de requisitos ocorre somente no bootstrap. A instalação definitiva 
 
 ```bash
 ./vendor/bin/sail up -d
+./vendor/bin/sail up -d queue scheduler
 ./vendor/bin/sail ps
 ./vendor/bin/sail artisan migrate
 ./vendor/bin/sail npm run dev
@@ -149,6 +207,12 @@ cd /home/dr_4_/clone_google_keep
 ./tests/e2e/iniciar-isolado.sh etapa7 8006
 # execute o roteiro somente depois de ISOLAMENTO CONFIRMADO
 ./tests/e2e/parar-isolado.sh etapa7
+
+# MySQL descartável para transações e concorrência
+./tests/e2e/iniciar-mysql-isolado.sh expansoes_mysql 8007
+./tests/e2e/testar-mysql-isolado.sh expansoes_mysql
+python3 ./tests/e2e/verificar-concorrencia-mysql.py http://127.0.0.1:8007 notas_verificacao_expansoes_mysql ./tests/e2e/preflight-mysql-isolamento.sh
+./tests/e2e/parar-mysql-isolado.sh expansoes_mysql
 ```
 
 `iniciar-isolado.sh` cria uma configuração em cache própria, inicia o processo HTTP e chama `preflight-isolamento.sh` antes das migrations. O preflight consulta `/_diagnostico/ambiente-verificacao` no próprio servidor e exige `testing`, driver `sqlite`, arquivo `/verificacao/notas.sqlite`, sessão `cookie`, cache `array` e configuração em cache ativa. Qualquer divergência termina com erro antes de migrations, cadastro ou seed.
@@ -180,28 +244,29 @@ Verificadas em 21/09/2026:
 
 As versões exatas estão em `composer.lock` e `package-lock.json`.
 
-## Verificações desta etapa
 
-- 89 testes e 453 asserções aprovadas em SQLite `:memory:`.
-- Cobertura de título, descrição, campos nulos, termo vazio, limite, nenhum resultado e `%`, `_` e `!` literais.
-- Cobertura do agrupamento por usuário e por seção, resposta JSON e preservação de `q` nas mutações.
-- O preflight HTTP real confirmou `testing`, `sqlite`, `/verificacao/notas.sqlite`, sessão `cookie`, cache `array` e configuração em cache própria antes das mutações.
-- Uma configuração simulada com driver MySQL foi recusada antes de qualquer mutação; a rota de diagnóstico retornou 404 na aplicação normal.
-- Chromium confirmou debounce, cancelamento, respostas fora de ordem, falha de rede, limpeza, recarga pela URL e navegação com consulta ativa.
-- Cartões e modal permaneceram funcionais após atualização dinâmica; uma edição que deixou de corresponder foi removida pelo servidor.
-- A busca convencional funcionou com JavaScript desativado. Desktop 1440 × 1000 e celular 390 × 844 não apresentaram rolagem horizontal nem erros JavaScript.
-- Pint, build de produção, validação estrita do Composer e requisitos de plataforma foram aprovados.
+## Verificações desta rodada
 
-| Busca | Captura |
+- 104 testes PHP e 598 asserções aprovados em SQLite `:memory:`.
+- As 11 regressões novas e 114 asserções também passaram no MySQL 8.4 descartável em tmpfs.
+- Duas gravações HTTP concorrentes da mesma revisão no MySQL produziram 200 e 409; a revisão avançou uma única vez, de 1 para 2.
+- A atualização incremental foi provada em SQLite e MySQL a partir do esquema anterior com uma nota existente: ID e conteúdo foram preservados, `tipo_conteudo=texto`, `revisao=1` e UUID preenchido.
+- O preflight HTTP confirmou ambiente, driver, arquivo ou schema, sessão, cache e config cache antes de cada mutação isolada. A prova negativa recusou MySQL inesperado antes de gravar.
+- O roteiro CDP local confirmou desktop, 390 x 844 sem rolagem horizontal, criação online, criação e edição offline de texto/lista, item concluído, recarga, reconexão e sincronização.
+- O Mailpit recebeu um lembrete real para endereço fictício `@example.test`.
+- Pint, build do Vite, validação estrita do Composer e requisitos de plataforma foram aprovados.
+
+| Estado | Captura |
 | --- | --- |
-| Minhas notas — desktop | [captura](docs/capturas/busca-notas-desktop.png) |
-| Arquivadas — desktop | [captura](docs/capturas/busca-arquivadas-desktop.png) |
-| Lixeira — celular | [captura](docs/capturas/busca-lixeira-celular.png) |
+| Notas e ações - desktop | [captura](docs/capturas/expansoes-notas-desktop.png) |
+| Notas - celular | [captura](docs/capturas/expansoes-notas-celular.png) |
+| Lembretes - desktop | [captura](docs/capturas/expansoes-lembretes-desktop.png) |
+| Criação e edição offline - celular | [captura](docs/capturas/expansoes-offline-celular.png) |
 
-As capturas usam somente o SQLite criado depois do preflight HTTP.
+As capturas e contas fictícias foram produzidas somente depois do preflight HTTP, no SQLite descartável.
 
 ## Git e atribuições
 
-Repositório independente em `main`, com identidade somente local: `MatheusRyuki <matheuskaiya2@gmail.com>`. Não há commit, remote ou push. Nenhuma dependência ou arquivo exclusivo de agentes foi adicionada.
+Repositório independente em `main`, com identidade somente local: `MatheusRyuki <matheuskaiya2@gmail.com>`. Os cinco commits anteriores permanecem preservados; esta rodada fica no working tree, sem remote ou push. Nenhuma dependência ou arquivo exclusivo de agentes foi adicionada.
 
 Consulte [licenças e atribuições](docs/atribuicoes.md).

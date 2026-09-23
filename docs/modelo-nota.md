@@ -8,6 +8,9 @@ O model `App\Models\Nota` usa explicitamente a tabela `notas`, `SoftDeletes` e a
 | usuario_id | FK de users.id | Proprietário obrigatório; exclusão da conta remove suas notas em cascata |
 | titulo | varchar(255), nullable | Opcional quando há descrição |
 | descricao | text, nullable | Opcional quando há título; limite da aplicação de 10.000 caracteres |
+| tipo_conteudo | varchar(10) | `texto` ou `lista`; `texto` para notas existentes |
+| revisao | bigint unsigned | Revisão monotônica, inicialmente 1 |
+| uuid_sincronizacao | uuid, unique | Identidade estável da sincronização, preenchida também no legado |
 | fixada | boolean | `false` inicialmente; alterada pela operação dedicada de fixação |
 | arquivada | boolean | `false` inicialmente; alterada pela operação dedicada de arquivamento |
 | tipo_aparencia | varchar(10) | `cor` ou `imagem`; `cor` inicialmente |
@@ -50,9 +53,9 @@ A listagem principal aplica `arquivada = false`; a página Arquivadas aplica `ar
 
 O proprietário sempre vem da sessão por meio da relação de notas do usuário. `usuario_id` enviado pelo cliente é ignorado.
 
-As listagens começam na relação do usuário autenticado e seguem os filtros de arquivamento documentados acima. A tela principal separa **Fixadas** e **Outras** somente quando existe ao menos uma nota fixada.
+As listagens usam o escopo de notas acessíveis: propriedade ou participação aceita, sempre dentro da seção pedida. A tela principal separa **Fixadas** e **Outras** somente quando existe ao menos uma nota fixada.
 
-A `NotaPolicy` verifica a propriedade em leitura e atualização, inclusive nas URLs diretas e requisições manipuladas. A exclusão lógica também é respeitada pelo route model binding padrão.
+A `NotaPolicy` distingue proprietário, editor e leitor em URLs diretas e requisições manipuladas. Estados da nota e participantes são exclusivos do proprietário. A exclusão lógica também é respeitada pelo route model binding padrão.
 
 ## Lixeira, restauração e exclusão definitiva
 
@@ -66,8 +69,38 @@ A exclusão definitiva usa `forceDelete()` somente depois de confirmar que a not
 
 ## Busca
 
-A busca começa sempre em `user()->notas()`. Na tela principal aplica `arquivada = false`, em Arquivadas aplica `arquivada = true` e na Lixeira adiciona `onlyTrashed()`. Só depois desses limites é acrescentado um grupo entre parênteses com `titulo LIKE ? OR descricao LIKE ?`, mantendo proprietário e seção fora do `OR`.
+A busca normal começa no escopo `acessiveisPor()` e a Lixeira começa nas notas removidas do proprietário. Na tela principal aplica `arquivada = false`, em Arquivadas aplica `arquivada = true` e na Lixeira adiciona `onlyTrashed()`. Só depois desses limites é acrescentado um grupo entre parênteses para título, descrição ou itens, mantendo acesso e seção fora do `OR`.
 
 O padrão usa parâmetros vinculados e `ESCAPE '!'`. Antes de acrescentar `%` nas extremidades, `!`, `%` e `_` são convertidos para `!!`, `!%` e `!_`; assim caracteres curinga enviados pelo usuário são texto literal. Colunas nulas não impedem a outra coluna de corresponder.
 
 `q` é aparado e limitado a 100 caracteres. Um valor vazio não adiciona condição e preserva a ordenação normal. A resposta HTML e a resposta JSON reutilizam a mesma consulta e o mesmo componente de cartões.
+
+## Conteúdo estruturado e revisão
+
+`tipo_conteudo` aceita `texto` ou `lista`; o valor padrão preserva registros anteriores como texto. `nota_itens` guarda texto (até 500 caracteres), conclusão e posição, com unicidade entre nota e posição. O tipo não muda durante a edição.
+
+`revisao` começa em 1 e avança em toda alteração compartilhada. Conteúdo, aparência e estados usam lock de linha quando precisam comparar ou alterar a revisão. Salvamentos HTTP e offline recusam uma revisão base antiga com conflito explícito.
+
+`uuid_sincronizacao` é estável e único. A migration preenche UUIDs nas notas existentes. `operacoes_sincronizacao` associa cada UUID de operação ao usuário e conserva o resultado, oferecendo idempotência depois da perda de uma resposta.
+
+## Metadados pessoais
+
+`etiquetas` pertence a um usuário e guarda nome exibido e nome normalizado. A pivot `etiqueta_nota` inclui `usuario_id`; assim duas pessoas podem organizar a mesma nota de formas diferentes. A unicidade é por usuário, nota e etiqueta.
+
+`lembretes` também pertence simultaneamente ao usuário e à nota, com uma linha por par. O instante fica em UTC e o fuso original é preservado. `ativo`, `suspenso_lixeira` e `processado_em` distinguem agendamento, suspensão e processamento. `notificacoes_internas.chave` é única para impedir duplicações.
+
+`operacoes_desfazer` guarda token, usuário, tipo, revisões esperadas, retorno de navegação, expiração e uso. O conteúdo completo da nota não é copiado.
+
+## Colaboração
+
+`nota_participantes` vincula uma conta cadastrada a uma nota com papel `editor` ou `leitor`. `convites_notas` mantém o usuário convidado, quem convidou, papel, token e estado; o e-mail é informação do convite, enquanto a autorização usa `convidado_id`.
+
+A propriedade continua em `notas.usuario_id` e não é transferida. Participantes aceitos entram no escopo `acessiveisPor` enquanto a nota não está removida. Editor pode atualizar conteúdo e aparência. Leitor pode consultar e exportar. Somente o proprietário gerencia fixação, arquivamento, lixeira, restauração, exclusão e participantes.
+
+Mover à lixeira não remove pivots de participantes, itens ou metadados pessoais. O escopo de leitura oculta a nota removida dos participantes; restaurar recupera os vínculos ainda existentes. Exclusão definitiva usa cascatas para remover os dados dependentes, sem tocar nos SVGs versionados.
+
+## Offline
+
+O IndexedDB usa o UUID da nota e `conta_id` como fronteiras lógicas. Notas, fila e conflitos da conta anterior são removidos na troca de conta. O servidor rejeita um `conta_id` diferente da sessão e revalida Policy e revisão em cada atualização.
+
+O service worker armazena somente `offline.html`, `offline-app.js` e o manifesto. Dados privados ficam no IndexedDB e não em Cache Storage. Revogação e exclusão são reconciliadas na próxima conexão; até lá uma cópia já obtida pode continuar no dispositivo desconectado.
