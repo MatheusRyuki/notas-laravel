@@ -1,4 +1,7 @@
 import Alpine from 'alpinejs';
+import { iniciarOffline } from './offline';
+
+const itemVazio = () => ({ chave: crypto.randomUUID(), texto: '', concluido: false });
 
 window.notasApp = (aparenciaCriacao = {}, fundosDisponiveis = {}, configuracaoBusca = {}) => ({
     fundosDisponiveis,
@@ -6,16 +9,19 @@ window.notasApp = (aparenciaCriacao = {}, fundosDisponiveis = {}, configuracaoBu
         tipo_aparencia: aparenciaCriacao.tipo_aparencia ?? 'cor',
         cor: aparenciaCriacao.cor ?? 'padrao',
         fundo: aparenciaCriacao.fundo ?? Object.keys(fundosDisponiveis)[0] ?? '',
+        tipo_conteudo: aparenciaCriacao.tipo_conteudo ?? 'texto',
+        itens: (aparenciaCriacao.itens ?? [itemVazio()]).map((item) => ({ chave: crypto.randomUUID(), ...item })),
     },
     carregandoEdicao: false,
     salvandoEdicao: false,
     erroCarregamento: '',
     errosEdicao: {},
+    conflitoEdicao: null,
     urlAtualizacao: '',
-    edicao: { titulo: '', descricao: '', tipo_aparencia: 'cor', cor: 'padrao', fundo: Object.keys(fundosDisponiveis)[0] ?? '' },
+    edicao: { titulo: '', descricao: '', tipo_conteudo: 'texto', itens: [], tipo_aparencia: 'cor', cor: 'padrao', fundo: Object.keys(fundosDisponiveis)[0] ?? '', revisao: 1, papel: '' },
     carregandoLeitura: false,
     erroLeitura: '',
-leitura: { titulo: '', descricao: '', tipo_aparencia: 'cor', cor: 'padrao', fundo: Object.keys(fundosDisponiveis)[0] ?? '', fixada: false, arquivada: false },
+    leitura: { titulo: '', descricao: '', tipo_conteudo: 'texto', itens: [], tipo_aparencia: 'cor', cor: 'padrao', fundo: Object.keys(fundosDisponiveis)[0] ?? '', fixada: false, arquivada: false },
     termoBusca: configuracaoBusca.termo ?? '',
     secaoBusca: configuracaoBusca.secao ?? '',
     urlBusca: configuracaoBusca.url ?? window.location.pathname,
@@ -24,6 +30,9 @@ leitura: { titulo: '', descricao: '', tipo_aparencia: 'cor', cor: 'padrao', fund
     temporizadorBusca: null,
     controleBusca: null,
     sequenciaBusca: 0,
+    modoSelecao: false,
+    selecionadas: [],
+    mensagemInterface: '',
 
     iniciarBusca() {
         window.addEventListener('popstate', () => {
@@ -72,14 +81,14 @@ leitura: { titulo: '', descricao: '', tipo_aparencia: 'cor', cor: 'padrao', fund
             const dados = await resposta.json();
 
             if (resposta.status === 422) {
-                const erroValidacao = new Error(dados.errors?.q?.[0] ?? 'O termo de busca é inválido.');
-                erroValidacao.exibirMensagem = true;
-                throw erroValidacao;
+                const erro = new Error(Object.values(dados.errors ?? {}).flat()[0] ?? 'O termo ou filtro é inválido.');
+                erro.exibirMensagem = true;
+                throw erro;
             }
             if (! resposta.ok) {
-                const erroResposta = new Error('Não foi possível atualizar a busca. Tente novamente.');
-                erroResposta.exibirMensagem = true;
-                throw erroResposta;
+                const erro = new Error('Não foi possível atualizar a busca. Tente novamente.');
+                erro.exibirMensagem = true;
+                throw erro;
             }
             if (sequencia !== this.sequenciaBusca || dados.secao !== secao) return;
 
@@ -87,11 +96,11 @@ leitura: { titulo: '', descricao: '', tipo_aparencia: 'cor', cor: 'padrao', fund
             Array.from(resultados.children).forEach((elemento) => window.Alpine.destroyTree(elemento));
             resultados.innerHTML = dados.html;
             Array.from(resultados.children).forEach((elemento) => window.Alpine.initTree(elemento));
+            const visiveis = new Set([...resultados.querySelectorAll('[data-nota-id]')].map((elemento) => String(elemento.dataset.notaId)));
+            this.selecionadas = this.selecionadas.filter((id) => visiveis.has(String(id)));
         } catch (erro) {
             if (erro.name !== 'AbortError' && sequencia === this.sequenciaBusca) {
-                this.erroBusca = erro.exibirMensagem
-                    ? erro.message
-                    : 'Falha de comunicação durante a busca. Tente novamente.';
+                this.erroBusca = erro.exibirMensagem ? erro.message : 'Falha de comunicação durante a busca. Tente novamente.';
             }
         } finally {
             if (sequencia === this.sequenciaBusca) this.buscaCarregando = false;
@@ -99,81 +108,76 @@ leitura: { titulo: '', descricao: '', tipo_aparencia: 'cor', cor: 'padrao', fund
     },
 
     classeAparencia(aparencia) {
-        if (aparencia.tipo_aparencia === 'imagem' && this.fundosDisponiveis[aparencia.fundo]) {
-            return 'aparencia-imagem';
-        }
-
+        if (aparencia.tipo_aparencia === 'imagem' && this.fundosDisponiveis[aparencia.fundo]) return 'aparencia-imagem';
         return `cor-nota--${aparencia.cor ?? 'padrao'}`;
     },
 
     estiloAparencia(aparencia) {
         const caminho = this.fundosDisponiveis[aparencia.fundo];
-
-        if (aparencia.tipo_aparencia !== 'imagem' || ! caminho) {
-            return {};
-        }
-
-        return { '--imagem-nota': `url("${caminho}")` };
+        return aparencia.tipo_aparencia === 'imagem' && caminho ? { '--imagem-nota': `url("${caminho}")` } : {};
     },
 
-    async abrirLeitura(url) {
-        this.carregandoLeitura = true;
-        this.erroLeitura = '';
-        this.leitura = { titulo: '', descricao: '', tipo_aparencia: 'cor', cor: 'padrao', fundo: Object.keys(this.fundosDisponiveis)[0] ?? '', fixada: false, arquivada: false };
-        window.dispatchEvent(new CustomEvent('open-modal', { detail: 'consultar-nota' }));
-
-        try {
-            const resposta = await fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
-            if (! resposta.ok) throw new Error('Não foi possível consultar esta nota.');
-            this.leitura = await resposta.json();
-        } catch (erro) {
-            this.erroLeitura = 'Não foi possível consultar esta nota. Tente novamente.';
-        } finally {
-            this.carregandoLeitura = false;
-        }
+    adicionarItem(itens) {
+        itens.push(itemVazio());
+        this.$nextTick(() => document.querySelector('.linha-item:last-of-type input[type="text"]')?.focus());
     },
-    async abrirEdicao(url) {
+
+    moverItem(itens, indice, deslocamento) {
+        const destino = indice + deslocamento;
+        if (destino < 0 || destino >= itens.length) return;
+        [itens[indice], itens[destino]] = [itens[destino], itens[indice]];
+    },
+
+    async abrirNota(url) {
         this.carregandoEdicao = true;
         this.erroCarregamento = '';
         this.errosEdicao = {};
+        this.conflitoEdicao = null;
         this.urlAtualizacao = '';
-        this.edicao = {
-            titulo: '',
-            descricao: '',
-            tipo_aparencia: 'cor',
-            cor: 'padrao',
-            fundo: Object.keys(this.fundosDisponiveis)[0] ?? '',
-        };
         window.dispatchEvent(new CustomEvent('open-modal', { detail: 'editar-nota' }));
 
         try {
-            const resposta = await fetch(url, {
-                headers: { Accept: 'application/json' },
-                credentials: 'same-origin',
-            });
+            const resposta = await fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+            if (! resposta.ok) throw new Error();
+            const nota = await resposta.json();
 
-            if (! resposta.ok) {
-                throw new Error('Não foi possível abrir esta nota.');
+            if (nota.pode_editar === false || ! nota.url_atualizacao) {
+                this.leitura = nota;
+                window.dispatchEvent(new CustomEvent('close-modal', { detail: 'editar-nota' }));
+                this.$nextTick(() => window.dispatchEvent(new CustomEvent('open-modal', { detail: 'consultar-nota' })));
+                return;
             }
 
-            const nota = await resposta.json();
-            this.edicao.titulo = nota.titulo ?? '';
-            this.edicao.descricao = nota.descricao ?? '';
-            this.edicao.tipo_aparencia = nota.tipo_aparencia ?? 'cor';
-            this.edicao.cor = nota.cor ?? 'padrao';
-            this.edicao.fundo = nota.fundo ?? Object.keys(this.fundosDisponiveis)[0] ?? '';
+            this.edicao = {
+                ...nota,
+                itens: (nota.itens ?? []).map((item) => ({ chave: crypto.randomUUID(), ...item })),
+            };
             this.urlAtualizacao = nota.url_atualizacao;
             this.$nextTick(() => setTimeout(() => document.getElementById('editar-titulo')?.focus(), 100));
-        } catch (erro) {
+        } catch {
             this.erroCarregamento = 'Não foi possível abrir esta nota. Tente novamente.';
         } finally {
             this.carregandoEdicao = false;
         }
     },
 
+    async abrirLeitura(url) {
+        this.carregandoLeitura = true;
+        this.erroLeitura = '';
+        window.dispatchEvent(new CustomEvent('open-modal', { detail: 'consultar-nota' }));
+        try {
+            const resposta = await fetch(url, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+            if (! resposta.ok) throw new Error();
+            this.leitura = await resposta.json();
+        } catch {
+            this.erroLeitura = 'Não foi possível consultar esta nota. Tente novamente.';
+        } finally {
+            this.carregandoLeitura = false;
+        }
+    },
+
     async salvarEdicao() {
         if (! this.urlAtualizacao || this.salvandoEdicao) return;
-
         this.salvandoEdicao = true;
         this.errosEdicao = {};
         this.erroCarregamento = '';
@@ -189,26 +193,61 @@ leitura: { titulo: '', descricao: '', tipo_aparencia: 'cor', cor: 'padrao', fund
                 },
                 body: JSON.stringify(this.edicao),
             });
+            const dados = await resposta.json();
 
             if (resposta.status === 422) {
-                const dados = await resposta.json();
                 this.errosEdicao = dados.errors ?? {};
                 return;
             }
-
-            if (! resposta.ok) {
-                throw new Error('Não foi possível salvar. Tente novamente.');
+            if (resposta.status === 409) {
+                this.conflitoEdicao = dados.conflito;
+                return;
             }
+            if (! resposta.ok) throw new Error();
 
-            await resposta.json();
             window.location.reload();
-        } catch (erro) {
+        } catch {
             this.erroCarregamento = 'Não foi possível salvar. Tente novamente.';
         } finally {
             this.salvandoEdicao = false;
+        }
+    },
+
+    resumoConflitoAtual() {
+        const atual = this.conflitoEdicao?.atual;
+        if (! atual) return '';
+        const itens = (atual.itens ?? []).map((item) => `${item.concluido ? '[x]' : '[ ]'} ${item.texto}`).join('\n');
+        return [atual.titulo, atual.descricao, itens].filter(Boolean).join('\n\n');
+    },
+
+    usarVersaoAtual() {
+        if (! this.conflitoEdicao?.atual) return;
+        this.edicao = { ...this.conflitoEdicao.atual, itens: (this.conflitoEdicao.atual.itens ?? []).map((item) => ({ chave: crypto.randomUUID(), ...item })) };
+        this.conflitoEdicao = null;
+    },
+
+    tentarVersaoLocal() {
+        if (! this.conflitoEdicao?.atual) return;
+        this.edicao.revisao = this.conflitoEdicao.atual.revisao;
+        this.conflitoEdicao = null;
+        this.salvarEdicao();
+    },
+
+    async copiarNota(urlTexto, urlDownload) {
+        try {
+            const resposta = await fetch(urlTexto, { headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+            if (! resposta.ok) throw new Error();
+            const dados = await resposta.json();
+            if (! navigator.clipboard?.writeText) throw new Error();
+            await navigator.clipboard.writeText(dados.texto);
+            this.mensagemInterface = 'Nota copiada como texto.';
+        } catch {
+            this.mensagemInterface = 'A área de transferência não está disponível. O arquivo será baixado.';
+            window.location.assign(urlDownload);
         }
     },
 });
 
 window.Alpine = Alpine;
 Alpine.start();
+iniciarOffline();

@@ -61,5 +61,11 @@
         @case('check')
             <path d="m6 12 4 4 8-8" />
             @break
+        @case('lembrete')
+            <path d="M6 9a6 6 0 0 1 12 0c0 7 3 7 3 7H3s3 0 3-7M9.5 19a2.5 2.5 0 0 0 5 0" />
+            @break
+        @case('compartilhar')
+            <circle cx="8" cy="8" r="3" /><circle cx="17" cy="7" r="2.5" /><path d="M3.5 19c.5-4 2-6 4.5-6s4 2 4.5 6M13 14c1-.8 2-1.2 3.2-1 2.2.2 3.5 2.2 4 5" />
+            @break
     @endswitch
 </svg>

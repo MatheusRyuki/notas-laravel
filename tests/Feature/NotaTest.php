@@ -137,6 +137,8 @@ class NotaTest extends TestCase
             ->assertJsonPath('descricao', 'Texto anterior');
 
         $this->actingAs($usuario)->patchJson(route('notas.update', $nota), [
+            'revisao' => $nota->revisao,
+            'tipo_conteudo' => 'texto',
             'titulo' => '  Depois  ',
             'descricao' => "  linha um\nlinha dois  ",
             'usuario_id' => User::factory()->create()->id,
@@ -157,6 +159,8 @@ class NotaTest extends TestCase
         $nota = $usuario->notas()->create(['titulo' => 'Preservada', 'descricao' => null]);
 
         $this->actingAs($usuario)->patchJson(route('notas.update', $nota), [
+            'revisao' => $nota->revisao,
+            'tipo_conteudo' => 'texto',
             'titulo' => '   ',
             'descricao' => " \n ",
         ])->assertUnprocessable()
@@ -173,6 +177,8 @@ class NotaTest extends TestCase
 
         $this->actingAs($intruso)->getJson(route('notas.show', $nota))->assertForbidden();
         $this->actingAs($intruso)->patchJson(route('notas.update', $nota), [
+            'revisao' => $nota->revisao,
+            'tipo_conteudo' => 'texto',
             'titulo' => 'Invadida',
             'descricao' => 'Alterada',
         ])->assertForbidden();

@@ -45,6 +45,8 @@ class NotaFundoTest extends TestCase
         ])->save();
 
         $this->actingAs($usuario)->patchJson(route('notas.update', $nota), [
+            'revisao' => $nota->revisao,
+            'tipo_conteudo' => 'texto',
             'titulo' => 'Alternável',
             'descricao' => '',
             'tipo_aparencia' => 'imagem',
@@ -56,6 +58,8 @@ class NotaFundoTest extends TestCase
         $this->assertSame(FundoNota::Constelacao->caminho(), $nota->caminho_imagem);
 
         $this->actingAs($usuario)->patchJson(route('notas.update', $nota), [
+            'revisao' => $nota->revisao,
+            'tipo_conteudo' => 'texto',
             'titulo' => 'Agora em areia',
             'descricao' => '',
             'tipo_aparencia' => 'cor',
@@ -69,6 +73,8 @@ class NotaFundoTest extends TestCase
         $this->assertNull($nota->caminho_imagem);
 
         $this->actingAs($usuario)->patchJson(route('notas.update', $nota), [
+            'revisao' => $nota->revisao,
+            'tipo_conteudo' => 'texto',
             'titulo' => 'Agora padrão',
             'descricao' => '',
             'tipo_aparencia' => 'cor',
@@ -114,6 +120,8 @@ class NotaFundoTest extends TestCase
         ])->save();
 
         $this->actingAs($usuario)->patchJson(route('notas.update', $nota), [
+            'revisao' => $nota->revisao,
+            'tipo_conteudo' => 'texto',
             'titulo' => 'Depois',
             'descricao' => 'Somente o texto mudou.',
         ])->assertOk();
@@ -141,6 +149,8 @@ class NotaFundoTest extends TestCase
 
         $this->actingAs($intruso)->getJson(route('notas.show', $nota))->assertForbidden();
         $this->actingAs($intruso)->patchJson(route('notas.update', $nota), [
+            'revisao' => $nota->revisao,
+            'tipo_conteudo' => 'texto',
             'titulo' => 'Invadida',
             'descricao' => '',
             'tipo_aparencia' => 'imagem',

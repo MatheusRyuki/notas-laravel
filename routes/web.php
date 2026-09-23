@@ -1,8 +1,17 @@
 <?php
 
+use App\Http\Controllers\CompartilhamentoController;
+use App\Http\Controllers\DesfazerController;
+use App\Http\Controllers\EtiquetaController;
+use App\Http\Controllers\ExportarNotaController;
+use App\Http\Controllers\LembreteController;
 use App\Http\Controllers\LixeiraController;
+use App\Http\Controllers\LoteNotaController;
 use App\Http\Controllers\NotaController;
+use App\Http\Controllers\NotaEtiquetaController;
+use App\Http\Controllers\NotificacaoController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\SincronizacaoController;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
@@ -30,11 +39,35 @@ Route::middleware('auth')->group(function () {
     Route::delete('/lixeira/{nota}', [LixeiraController::class, 'destruir'])->name('lixeira.destruir');
 
     Route::post('/notas', [NotaController::class, 'store'])->name('notas.store');
+    Route::post('/notas/lote', LoteNotaController::class)->name('notas.lote');
     Route::patch('/notas/{nota}/fixacao', [NotaController::class, 'fixacao'])->name('notas.fixacao');
     Route::patch('/notas/{nota}/arquivamento', [NotaController::class, 'arquivamento'])->name('notas.arquivamento');
     Route::delete('/notas/{nota}/lixeira', [NotaController::class, 'moverLixeira'])->name('notas.mover-lixeira');
+    Route::get('/notas/{nota}/exportacao', ExportarNotaController::class)->whereNumber('nota')->name('notas.exportar');
+    Route::put('/notas/{nota}/etiquetas', [NotaEtiquetaController::class, 'update'])->name('notas.etiquetas');
+    Route::post('/notas/{nota}/lembrete', [LembreteController::class, 'store'])->name('notas.lembrete');
+    Route::post('/notas/{nota}/convites', [CompartilhamentoController::class, 'convidar'])->name('notas.convidar');
+    Route::patch('/notas/{nota}/participantes/{participante}', [CompartilhamentoController::class, 'alterarPapel'])->name('notas.participantes.papel');
+    Route::delete('/notas/{nota}/participantes/{participante}', [CompartilhamentoController::class, 'revogar'])->name('notas.participantes.revogar');
+    Route::delete('/notas/{nota}/sair', [CompartilhamentoController::class, 'sair'])->name('notas.compartilhamento.sair');
     Route::get('/notas/{nota}', [NotaController::class, 'show'])->name('notas.show');
     Route::patch('/notas/{nota}', [NotaController::class, 'update'])->name('notas.update');
+
+    Route::post('/desfazer/{token}', DesfazerController::class)->name('desfazer');
+
+    Route::post('/etiquetas', [EtiquetaController::class, 'store'])->name('etiquetas.store');
+    Route::patch('/etiquetas/{etiqueta}', [EtiquetaController::class, 'update'])->name('etiquetas.update');
+    Route::delete('/etiquetas/{etiqueta}', [EtiquetaController::class, 'destroy'])->name('etiquetas.destroy');
+
+    Route::get('/lembretes', [LembreteController::class, 'index'])->name('lembretes.index');
+    Route::delete('/lembretes/{lembrete}', [LembreteController::class, 'destroy'])->name('lembretes.destroy');
+    Route::patch('/notificacoes/{notificacao}/leitura', [NotificacaoController::class, 'ler'])->name('notificacoes.ler');
+
+    Route::get('/compartilhamentos', [CompartilhamentoController::class, 'index'])->name('compartilhamentos.index');
+    Route::patch('/convites/{token}', [CompartilhamentoController::class, 'responder'])->name('convites.responder');
+
+    Route::get('/sincronizacao/bootstrap', [SincronizacaoController::class, 'bootstrap'])->name('sincronizacao.bootstrap');
+    Route::post('/sincronizacao', [SincronizacaoController::class, 'sincronizar'])->name('sincronizacao.executar');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

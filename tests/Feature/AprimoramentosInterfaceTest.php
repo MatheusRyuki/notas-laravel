@@ -23,7 +23,7 @@ class AprimoramentosInterfaceTest extends TestCase
         $this->assertStringNotContainsString('role="radio"', $html);
         $this->assertStringNotContainsString('tabindex="-1"', $html);
         $this->assertStringContainsString("el.matches('input[type=\\'radio\\']') && ! el.checked", $html);
-        $this->assertSame(2, substr_count($html, 'firstFocusable()?.focus()'));
+        $this->assertSame(3, substr_count($html, 'firstFocusable()?.focus()'));
     }
 
     public function test_interface_remove_marcadores_internos_e_mantem_anuncios_sem_regiao_viva_aninhada(): void

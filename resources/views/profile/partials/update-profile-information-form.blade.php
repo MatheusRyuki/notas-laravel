@@ -47,6 +47,16 @@
             @endif
         </div>
 
+        <div>
+            <x-input-label for="fuso_horario" value="Fuso horário dos lembretes" />
+            <select id="fuso_horario" name="fuso_horario" class="mt-1 block w-full" required>
+                @foreach(timezone_identifiers_list() as $fuso)
+                    <option value="{{ $fuso }}" @selected(old('fuso_horario', $user->fuso_horario) === $fuso)>{{ $fuso }}</option>
+                @endforeach
+            </select>
+            <x-input-error class="mt-2" :messages="$errors->get('fuso_horario')" />
+        </div>
+
         <div class="flex items-center gap-4">
             <x-primary-button>{{ __('Save') }}</x-primary-button>
 

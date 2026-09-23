@@ -121,6 +121,8 @@ class NotaFixacaoCorTest extends TestCase
         $nota = $usuario->notas()->create(['titulo' => 'Antes', 'descricao' => 'Texto']);
 
         $this->actingAs($usuario)->patchJson(route('notas.update', $nota), [
+            'revisao' => $nota->revisao,
+            'tipo_conteudo' => 'texto',
             'titulo' => 'Depois',
             'descricao' => "Linha 1\nLinha 2",
             'cor' => CorNota::Lavanda->value,
@@ -146,6 +148,8 @@ class NotaFixacaoCorTest extends TestCase
         $nota->forceFill(['cor' => CorNota::Areia])->save();
 
         $this->actingAs($usuario)->patchJson(route('notas.update', $nota), [
+            'revisao' => $nota->revisao,
+            'tipo_conteudo' => 'texto',
             'titulo' => 'Não salvar',
             'descricao' => '',
             'cor' => '#ff0000',
@@ -181,6 +185,8 @@ class NotaFixacaoCorTest extends TestCase
 
         $this->actingAs($intruso)->getJson(route('notas.show', $nota))->assertForbidden();
         $this->actingAs($intruso)->patchJson(route('notas.update', $nota), [
+            'revisao' => $nota->revisao,
+            'tipo_conteudo' => 'texto',
             'titulo' => 'Invadida',
             'descricao' => '',
             'cor' => CorNota::Ceu->value,

@@ -11,18 +11,14 @@ class FixarNotaRequest extends FormRequest
     {
         $nota = $this->route('nota');
 
-        return $nota instanceof Nota && $this->user()?->can('update', $nota) === true;
+        return $nota instanceof Nota && $this->user()?->can('manageState', $nota) === true;
     }
 
-    /** @return array<string, list<string>> */
     public function rules(): array
     {
-        return [
-            'fixada' => ['required', 'boolean'],
-        ];
+        return ['fixada' => ['required', 'boolean']];
     }
 
-    /** @return array<string, string> */
     public function messages(): array
     {
         return [

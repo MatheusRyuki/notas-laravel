@@ -1,5 +1,5 @@
 <x-app-layout>
-    <div class="confirmacao-pagina" x-data x-init="$nextTick(() => $refs.cancelar.focus())" x-on:keydown.escape.window="window.location.href = @js(route('lixeira.index', $termo === '' ? [] : ['q' => $termo]))">
+    <div class="confirmacao-pagina" x-data x-init="$nextTick(() => $refs.cancelar.focus())" x-on:keydown.escape.window="window.location.href = @js(route('lixeira.index', $consulta))">
         <section class="confirmacao-exclusao" aria-labelledby="titulo-confirmacao" aria-describedby="descricao-confirmacao">
             <span class="etiqueta">EXCLUSÃO DEFINITIVA</span>
             <h1 id="titulo-confirmacao">Excluir esta nota para sempre?</h1>
@@ -9,10 +9,12 @@
             @endif
             <p class="aviso-irreversivel">Os fundos compartilhados do catálogo permanecerão disponíveis para outras notas.</p>
             <div class="acoes-confirmacao">
-                <a href="{{ route('lixeira.index', $termo === '' ? [] : ['q' => $termo]) }}" class="botao-secundario" x-ref="cancelar">Cancelar</a>
+                <a href="{{ route('lixeira.index', $consulta) }}" class="botao-secundario" x-ref="cancelar">Cancelar</a>
                 <form method="POST" action="{{ route('lixeira.destruir', $nota->id) }}" x-data="{ enviando: false }" x-on:submit="if (enviando) { $event.preventDefault() } else { enviando = true }">
                     @csrf
-                    <input type="hidden" name="q" value="{{ $termo }}">
+                    @foreach($consulta as $nome => $valor)
+                        @foreach((array) $valor as $item)<input type="hidden" name="{{ is_array($valor) ? $nome.'[]' : $nome }}" value="{{ $item }}">@endforeach
+                    @endforeach
                     @method('DELETE')
                     <button type="submit" class="botao-perigo" x-bind:disabled="enviando" x-text="enviando ? 'Excluindo…' : 'Excluir definitivamente'">Excluir definitivamente</button>
                 </form>

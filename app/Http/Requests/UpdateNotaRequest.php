@@ -5,8 +5,10 @@ namespace App\Http\Requests;
 use App\Enums\CorNota;
 use App\Enums\FundoNota;
 use App\Enums\TipoAparencia;
+use App\Enums\TipoNota;
 use App\Models\Nota;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Enum;
 
 class UpdateNotaRequest extends FormRequest
@@ -18,33 +20,33 @@ class UpdateNotaRequest extends FormRequest
         return $nota instanceof Nota && $this->user()?->can('update', $nota) === true;
     }
 
-    /** @return array<string, list<string>|string> */
     public function rules(): array
     {
+        /** @var Nota $nota */
+        $nota = $this->route('nota');
+        $lista = $nota->tipo_conteudo === TipoNota::Lista;
+
         return [
-            'titulo' => ['nullable', 'required_without:descricao', 'string', 'max:255'],
-            'descricao' => ['nullable', 'required_without:titulo', 'string', 'max:10000'],
+            'revisao' => ['required', 'integer', 'min:1'],
+            'titulo' => [$lista ? 'nullable' : 'nullable', $lista ? 'string' : 'required_without:descricao', 'string', 'max:255'],
+            'descricao' => [$lista ? 'nullable' : 'nullable', $lista ? 'string' : 'required_without:titulo', 'string', 'max:10000'],
+            'tipo_conteudo' => ['required', Rule::in([$nota->tipo_conteudo->value])],
+            'itens' => [$lista ? 'required' : 'nullable', 'array', $lista ? 'min:1' : 'max:100', 'max:100'],
+            'itens.*.id' => ['nullable', 'integer', 'distinct'],
+            'itens.*.texto' => ['required', 'string', 'max:500'],
+            'itens.*.concluido' => ['sometimes', 'boolean'],
             'tipo_aparencia' => ['sometimes', 'required', new Enum(TipoAparencia::class)],
             'cor' => ['nullable', 'required_if:tipo_aparencia,cor', new Enum(CorNota::class)],
             'fundo' => ['nullable', 'required_if:tipo_aparencia,imagem', new Enum(FundoNota::class)],
         ];
     }
 
-    /** @return array<string, string> */
     public function messages(): array
     {
-        return [
-            'titulo.required_without' => 'Informe um título ou uma descrição.',
-            'titulo.max' => 'O título não pode ter mais de 255 caracteres.',
-            'descricao.required_without' => 'Informe um título ou uma descrição.',
-            'descricao.max' => 'A descrição não pode ter mais de 10.000 caracteres.',
-            'tipo_aparencia.required' => 'Escolha uma aparência para a nota.',
-            'tipo_aparencia.enum' => 'O tipo de aparência escolhido é inválido.',
-            'cor.required_if' => 'Escolha uma cor de fundo.',
-            'cor.enum' => 'A cor de fundo escolhida é inválida.',
-            'fundo.required_if' => 'Escolha um fundo para a nota.',
-            'fundo.enum' => 'O fundo escolhido é inválido.',
-        ];
+        return array_merge((new StoreNotaRequest)->messages(), [
+            'revisao.required' => 'A revisão da nota é obrigatória.',
+            'tipo_conteudo.in' => 'O tipo da nota não pode ser alterado durante a edição.',
+        ]);
     }
 
     protected function prepareForValidation(): void
@@ -55,13 +57,18 @@ class UpdateNotaRequest extends FormRequest
         ];
 
         if ($this->exists('tipo_aparencia') || $this->exists('cor') || $this->exists('fundo')) {
-            $tipo = $this->input('tipo_aparencia');
+            $dados['tipo_aparencia'] = $this->input(
+                'tipo_aparencia',
+                $this->exists('fundo') ? TipoAparencia::Imagem->value : TipoAparencia::Cor->value,
+            );
+        }
 
-            if (! $this->exists('tipo_aparencia')) {
-                $tipo = $this->exists('fundo') ? TipoAparencia::Imagem->value : TipoAparencia::Cor->value;
-            }
-
-            $dados['tipo_aparencia'] = $tipo;
+        if ($this->exists('itens')) {
+            $dados['itens'] = collect($this->input('itens', []))->map(fn ($item) => [
+                'id' => is_array($item) ? ($item['id'] ?? null) : null,
+                'texto' => is_array($item) && is_string($item['texto'] ?? null) ? trim($item['texto']) : null,
+                'concluido' => filter_var(is_array($item) ? ($item['concluido'] ?? false) : false, FILTER_VALIDATE_BOOL),
+            ])->filter(fn ($item) => $item['texto'] !== null && $item['texto'] !== '')->values()->all();
         }
 
         $this->merge($dados);
@@ -70,7 +77,6 @@ class UpdateNotaRequest extends FormRequest
     private function textoLimpo(string $campo): ?string
     {
         $valor = $this->input($campo);
-
         if (! is_string($valor)) {
             return $valor;
         }

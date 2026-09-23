@@ -1,0 +1,10 @@
+{
+  "name": "Notas",
+  "short_name": "Notas",
+  "lang": "pt-BR",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f7f6f0",
+  "theme_color": "#354e3f",
+  "description": "Notas pessoais com leitura e edição offline."
+}

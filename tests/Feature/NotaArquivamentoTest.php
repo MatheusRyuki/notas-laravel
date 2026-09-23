@@ -109,6 +109,8 @@ class NotaArquivamentoTest extends TestCase
         ])->save();
 
         $this->actingAs($usuario)->patchJson(route('notas.update', $nota), [
+            'revisao' => $nota->revisao,
+            'tipo_conteudo' => 'texto',
             'titulo' => 'Texto revisado',
             'descricao' => 'Continua arquivada.',
         ])->assertOk()->assertJsonPath('nota.arquivada', true);

@@ -18,7 +18,8 @@ class BuscaNotas
         return $consulta->where(function (Builder $trecho) use ($padrao): void {
             $trecho
                 ->whereRaw("titulo LIKE ? ESCAPE '!'", [$padrao])
-                ->orWhereRaw("descricao LIKE ? ESCAPE '!'", [$padrao]);
+                ->orWhereRaw("descricao LIKE ? ESCAPE '!'", [$padrao])
+                ->orWhereHas('itens', fn (Builder $itens) => $itens->whereRaw("texto LIKE ? ESCAPE '!'", [$padrao]));
         });
     }
 }
