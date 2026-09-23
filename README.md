@@ -260,6 +260,12 @@ As versões exatas estão em `composer.lock` e `package-lock.json`.
 | --- | --- |
 | Notas e ações - desktop | [captura](docs/capturas/expansoes-notas-desktop.png) |
 | Notas - celular | [captura](docs/capturas/expansoes-notas-celular.png) |
+| Cartão com Mais ações e lembrete - desktop | [captura](docs/capturas/padronizacao-cartao-acoes-desktop.png) |
+| Filtros e etiquetas - 320 px | [captura](docs/capturas/padronizacao-filtros-320.png) |
+| Arquivadas vazia - 390 px | [captura](docs/capturas/padronizacao-arquivadas-vazia-390.png) |
+| Lixeira vazia - 390 px | [captura](docs/capturas/padronizacao-lixeira-vazia-390.png) |
+| Compartilhamentos - desktop | [captura](docs/capturas/padronizacao-compartilhamentos-desktop.png) |
+| Compartilhamentos - 320 px | [captura](docs/capturas/padronizacao-compartilhamentos-320.png) |
 | Lembretes - desktop | [captura](docs/capturas/expansoes-lembretes-desktop.png) |
 | Criação e edição offline - celular | [captura](docs/capturas/expansoes-offline-celular.png) |
 
@@ -267,6 +273,6 @@ As capturas e contas fictícias foram produzidas somente depois do preflight HTT
 
 ## Git e atribuições
 
-Repositório independente em `main`, com identidade somente local: `MatheusRyuki <matheuskaiya2@gmail.com>`. Os cinco commits anteriores permanecem preservados; esta rodada fica no working tree, sem remote ou push. Nenhuma dependência ou arquivo exclusivo de agentes foi adicionada.
+Repositório independente em `main`, publicado em `MatheusRyuki/notas-laravel`. A rodada de padronização visual está registrada em commits locais; a publicação dessas alterações é uma etapa separada. Nenhuma dependência ou arquivo exclusivo de agentes foi adicionada.
 
 Consulte [licenças e atribuições](docs/atribuicoes.md).
