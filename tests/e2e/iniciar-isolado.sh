@@ -4,6 +4,7 @@ set -euo pipefail
 raiz="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 execucao="${1:-etapa7}"
 porta="${2:-8006}"
+modo="${3:-completo}"
 segura="$(printf '%s' "$execucao" | tr -cd 'a-zA-Z0-9_-')"
 [[ -n "$segura" && "$segura" == "$execucao" ]] || { echo 'Identificador de execução inválido.' >&2; exit 2; }
 
@@ -31,7 +32,11 @@ ambiente=(
   -e SESSION_COOKIE="notas_verificacao_${segura}"
   -e CACHE_STORE=array
   -e QUEUE_CONNECTION=sync
-  -e MAIL_MAILER=array
+  -e MAIL_MAILER=smtp
+  -e MAIL_HOST=mailpit
+  -e MAIL_PORT=1025
+  -e MAIL_FROM_ADDRESS=notas@example.test
+  -e MAIL_FROM_NAME=Notas
   -e APP_CONFIG_CACHE="$diretorio_container/config.php"
   -e APP_ROUTES_CACHE="$diretorio_container/routes.php"
   -e APP_EVENTS_CACHE="$diretorio_container/events.php"
@@ -60,7 +65,9 @@ done
 # Barreira obrigatória: migrations, seeds, cadastro e qualquer outra mutação vêm depois dela.
 "$raiz/tests/e2e/preflight-isolamento.sh" "$url" "$database_container"
 
-docker exec "$container" php ../artisan migrate --force >/dev/null
+if [[ "$modo" == "completo" ]]; then
+  docker exec "$container" php ../artisan migrate --force >/dev/null
+fi
 
 cat > "$diretorio_host/estado.env" <<EOF
 CONTAINER=$container
