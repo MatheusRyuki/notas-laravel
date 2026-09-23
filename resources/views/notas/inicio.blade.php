@@ -15,8 +15,9 @@ $urlBusca = route($rotaSecao, array_filter(['ordem' => $ordem, 'etiquetas' => $e
     <div x-data="notasApp(@js($criacao), @js($urlsFundos), @js(['termo' => $termo ?? '', 'secao' => $secao, 'url' => $urlBusca]))" x-init="iniciarBusca()">
         <div x-cloak x-show="mensagemInterface" class="aviso-sucesso" role="status" x-text="mensagemInterface"></div>
         @if (session('sucesso'))
-            <div class="aviso-sucesso" role="status">
-                {{ session('sucesso') }}
+            <div class="aviso-sucesso aviso-confirmacao" x-bind:class="{ 'aviso-flutuante': !$el.querySelector('form') }" role="status" x-data="{ visivel: true, temporizador: null, pausar() { clearTimeout(this.temporizador) }, agendar() { this.pausar(); if (!this.$el.querySelector('form')) this.temporizador = setTimeout(() => this.visivel = false, 6000) } }" x-init="agendar()" x-show="visivel" x-on:mouseenter="pausar()" x-on:mouseleave="agendar()" x-on:focusin="pausar()" x-on:focusout="agendar()">
+                <span>{{ session('sucesso') }}</span>
+                <button x-cloak type="button" class="fechar-confirmacao" aria-label="Fechar aviso de sucesso" x-on:click="visivel = false; pausar()"><x-icone nome="fechar" /></button>
                 @if(session('desfazer'))
                     <form method="POST" action="{{ route('desfazer', session('desfazer')) }}" class="form-desfazer">@csrf<button type="submit">Desfazer</button><span>Disponível por cinco minutos.</span></form>
                 @endif
@@ -39,32 +40,20 @@ $urlBusca = route($rotaSecao, array_filter(['ordem' => $ordem, 'etiquetas' => $e
             @unless ($secaoArquivadas)<button class="nova-nota" type="button" x-on:click="$dispatch('open-modal', 'criar-nota')"><x-icone nome="mais" /> Criar nota</button>@endunless
         </div>
 
-        <div class="painel-filtros">
-            <form method="GET" action="{{ route($rotaSecao) }}">
-                @if($termo)<input type="hidden" name="q" value="{{ $termo }}">@endif
-                <label>Ordenar
-                    <select name="ordem">
-                        <option value="atualizacao" @selected($ordem === 'atualizacao')>Atualização recente</option>
-                        <option value="criacao" @selected($ordem === 'criacao')>Criação recente</option>
-                        <option value="titulo" @selected($ordem === 'titulo')>Ordem alfabética</option>
-                    </select>
-                </label>
-                <fieldset><legend>Filtrar por qualquer etiqueta</legend>
-                    @foreach($etiquetas as $etiqueta)<label><input type="checkbox" name="etiquetas[]" value="{{ $etiqueta->id }}" @checked(in_array($etiqueta->id, $etiquetasSelecionadas))> {{ $etiqueta->nome }}</label>@endforeach
-                </fieldset>
-                <button type="submit">Aplicar filtros</button>
-            </form>
-            <details>
-                <summary>Gerenciar etiquetas</summary>
-                <form method="POST" action="{{ route('etiquetas.store') }}">@csrf<label>Nova etiqueta <input name="nome" maxlength="60" required></label><button type="submit">Criar</button></form>
-                @foreach($etiquetas as $etiqueta)
-                    <div class="linha-etiqueta">
-                        <form method="POST" action="{{ route('etiquetas.update', $etiqueta) }}">@csrf @method('PATCH')<input name="nome" value="{{ $etiqueta->nome }}" maxlength="60" required><button type="submit">Renomear</button></form>
-                        <form method="POST" action="{{ route('etiquetas.destroy', $etiqueta) }}">@csrf @method('DELETE')<button type="submit">Excluir</button></form>
-                    </div>
-                @endforeach
-            </details>
-        </div>
+        <x-filtros-notas
+            :action="route($rotaSecao)"
+            :termo="$termo"
+            :ordem="$ordem"
+            :opcoes-ordem="[
+                'atualizacao' => 'Atualização recente',
+                'criacao' => 'Criação recente',
+                'titulo' => 'Ordem alfabética',
+            ]"
+            :etiquetas="$etiquetas"
+            :etiquetas-selecionadas="$etiquetasSelecionadas"
+            :secao="$secao"
+            :permite-gerenciar="true"
+        />
 
         <div class="barra-selecao">
             <button type="button" x-on:click="modoSelecao = !modoSelecao; if (!modoSelecao) selecionadas=[]" x-text="modoSelecao ? 'Sair da seleção' : 'Selecionar notas'"></button>
@@ -99,20 +88,22 @@ $urlBusca = route($rotaSecao, array_filter(['ordem' => $ordem, 'etiquetas' => $e
             <form method="POST" action="{{ route('notas.store') }}" class="formulario-nota" x-bind:class="classeAparencia(criacao)" x-bind:style="estiloAparencia(criacao)" x-data="{ enviando: false }" x-on:submit="if (enviando) { $event.preventDefault() } else { enviando = true }">
                 @csrf
                 <div class="cabecalho-modal"><div><span class="etiqueta">NOVA NOTA</span><h2 id="titulo-modal-criacao">Registre uma ideia</h2></div><button type="button" class="fechar-modal" x-on:click="$dispatch('close-modal', 'criar-nota')" aria-label="Cancelar e fechar"><x-icone nome="fechar" /></button></div>
-                <label class="grupo-campo">Tipo
-                    <select name="tipo_conteudo" x-model="criacao.tipo_conteudo"><option value="texto">Texto</option><option value="lista">Lista de tarefas</option></select>
-                </label>
+                <div class="grupo-campo"><label for="criar-tipo">Tipo</label>
+                    <select id="criar-tipo" class="controle-select" name="tipo_conteudo" x-model="criacao.tipo_conteudo"><option value="texto">Texto</option><option value="lista">Lista de tarefas</option></select>
+                </div>
                 <div class="grupo-campo"><label for="criar-titulo">Título <span>Opcional</span></label><input id="criar-titulo" name="titulo" autofocus type="text" maxlength="255" value="{{ old('titulo') }}" autocomplete="off"></div>
                 <div class="grupo-campo"><label for="criar-descricao">Descrição de apoio <span>Opcional</span></label><textarea id="criar-descricao" name="descricao" rows="4" maxlength="10000">{{ old('descricao') }}</textarea></div>
                 <fieldset class="editor-lista" x-show="criacao.tipo_conteudo === 'lista'"><legend>Itens da lista</legend>
-                    <template x-for="(item, indice) in criacao.itens" :key="item.chave"><div class="linha-item">
-                        <input type="text" maxlength="500" x-model="item.texto" x-bind:name="'itens['+indice+'][texto]'" aria-label="Texto do item">
+                    <template x-for="(item, indice) in criacao.itens" :key="item.chave"><div class="linha-item linha-item-criacao">
+                        <input class="campo-item-lista" type="text" maxlength="500" x-model="item.texto" x-bind:name="'itens['+indice+'][texto]'" aria-label="Texto do item">
                         <input type="hidden" x-bind:name="'itens['+indice+'][concluido]'" x-bind:value="item.concluido ? 1 : 0">
-                        <button type="button" x-on:click="moverItem(criacao.itens, indice, -1)" aria-label="Mover item para cima">↑</button>
-                        <button type="button" x-on:click="moverItem(criacao.itens, indice, 1)" aria-label="Mover item para baixo">↓</button>
-                        <button type="button" x-on:click="criacao.itens.splice(indice,1)" aria-label="Remover item">Remover</button>
+                        <div class="acoes-item-lista">
+                            <button class="botao-icone-lista" type="button" x-on:click="moverItem(criacao.itens, indice, -1)" aria-label="Mover item para cima"><x-icone nome="mover-cima" /></button>
+                            <button class="botao-icone-lista" type="button" x-on:click="moverItem(criacao.itens, indice, 1)" aria-label="Mover item para baixo"><x-icone nome="mover-baixo" /></button>
+                            <button class="botao-remover-item" type="button" x-on:click="criacao.itens.splice(indice,1)" aria-label="Remover item"><x-icone nome="lixeira" /> <span>Remover</span></button>
+                        </div>
                     </div></template>
-                    <button type="button" x-on:click="adicionarItem(criacao.itens)">Adicionar item</button>
+                    <button class="botao-adicionar-item" type="button" x-on:click="adicionarItem(criacao.itens)"><x-icone nome="mais" /> Adicionar item</button>
                     <noscript><label>Primeiro item <input name="itens[0][texto]" maxlength="500"></label></noscript>
                 </fieldset>
                 @foreach ($errors->criacaoNota->all() as $erro)<p class="erro-campo">{{ $erro }}</p>@endforeach
@@ -139,13 +130,15 @@ $urlBusca = route($rotaSecao, array_filter(['ordem' => $ordem, 'etiquetas' => $e
                     <div class="grupo-campo"><label for="editar-descricao">Descrição de apoio <span>Opcional</span></label><textarea id="editar-descricao" rows="4" maxlength="10000" x-model="edicao.descricao"></textarea></div>
                     <fieldset class="editor-lista" x-show="edicao.tipo_conteudo === 'lista'"><legend>Itens da lista</legend>
                         <template x-for="(item, indice) in edicao.itens" :key="item.chave || item.id || indice"><div class="linha-item">
-                            <label><input type="checkbox" x-model="item.concluido"> Concluído</label>
-                            <input type="text" maxlength="500" x-model="item.texto" aria-label="Texto do item">
-                            <button type="button" x-on:click="moverItem(edicao.itens, indice, -1)" aria-label="Mover item para cima">↑</button>
-                            <button type="button" x-on:click="moverItem(edicao.itens, indice, 1)" aria-label="Mover item para baixo">↓</button>
-                            <button type="button" x-on:click="edicao.itens.splice(indice,1)">Remover</button>
+                            <label class="estado-item-lista"><input type="checkbox" x-model="item.concluido"> <span>Concluído</span></label>
+                            <input class="campo-item-lista" type="text" maxlength="500" x-model="item.texto" aria-label="Texto do item">
+                            <div class="acoes-item-lista">
+                                <button class="botao-icone-lista" type="button" x-on:click="moverItem(edicao.itens, indice, -1)" aria-label="Mover item para cima"><x-icone nome="mover-cima" /></button>
+                                <button class="botao-icone-lista" type="button" x-on:click="moverItem(edicao.itens, indice, 1)" aria-label="Mover item para baixo"><x-icone nome="mover-baixo" /></button>
+                                <button class="botao-remover-item" type="button" x-on:click="edicao.itens.splice(indice,1)"><x-icone nome="lixeira" /> <span>Remover</span></button>
+                            </div>
                         </div></template>
-                        <button type="button" x-on:click="adicionarItem(edicao.itens)">Adicionar item</button>
+                        <button class="botao-adicionar-item" type="button" x-on:click="adicionarItem(edicao.itens)"><x-icone nome="mais" /> Adicionar item</button>
                     </fieldset>
                     <template x-for="campo in ['titulo','descricao','tipo_conteudo','itens','tipo_aparencia','cor','fundo','revisao']"><template x-for="erro in (errosEdicao[campo] ?? [])"><p class="erro-campo" x-text="erro"></p></template></template>
                     <x-seletor-aparencia id="editar-aparencia" modelo="edicao" />

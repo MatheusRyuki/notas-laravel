@@ -39,7 +39,10 @@ $etiquetasAtuais = $nota->relationLoaded('etiquetas') ? $nota->etiquetas->pluck(
         @if ($nota->tipo_conteudo === \App\Enums\TipoNota::Lista)
             <ul class="lista-cartao">
                 @foreach($nota->itens->take(6) as $item)
-                    <li class="{{ $item->concluido ? 'concluido' : '' }}"><span aria-hidden="true">{{ $item->concluido ? '☑' : '☐' }}</span> {{ $item->texto }}</li>
+                    <li class="{{ $item->concluido ? 'concluido' : '' }}">
+                        <span class="marcador-item-lista" aria-hidden="true"><x-icone :nome="$item->concluido ? 'checkbox-marcado' : 'checkbox-vazio'" /></span>
+                        <span class="texto-item-lista">{{ $item->texto }}</span>
+                    </li>
                 @endforeach
             </ul>
         @endif
@@ -51,7 +54,10 @@ $etiquetasAtuais = $nota->relationLoaded('etiquetas') ? $nota->etiquetas->pluck(
     </button>
 
     <footer>
-        <time datetime="{{ ($emLixeira ? $nota->deleted_at : $nota->updated_at)->toIso8601String() }}">{{ ($emLixeira ? $nota->deleted_at : $nota->updated_at)->format('d/m/Y H:i') }}</time>
+        <time datetime="{{ ($emLixeira ? $nota->deleted_at : $nota->updated_at)->toIso8601String() }}">
+            {{ ($emLixeira ? $nota->deleted_at : $nota->updated_at)->format('d/m/Y H:i') }}
+        </time>
+
         <div class="acoes-cartao">
             @if ($emLixeira)
                 <form method="POST" action="{{ route('lixeira.restaurar', $nota->id) }}" x-data="{ enviando: false }" x-on:submit="if (enviando) { $event.preventDefault() } else { enviando = true }">
@@ -87,33 +93,55 @@ $etiquetasAtuais = $nota->relationLoaded('etiquetas') ? $nota->etiquetas->pluck(
             @endif
         </div>
 
-        <details class="mais-acoes-nota">
-            <summary>Mais ações</summary>
-            <div class="painel-acoes-nota">
-                <button type="button" x-on:click="copiarNota(@js(route('notas.exportar', ['nota' => $nota->id, 'texto' => 1])), @js(route('notas.exportar', $nota->id)))">Copiar como texto</button>
-                <a href="{{ route('notas.exportar', $nota->id) }}">Baixar .txt</a>
+        <details
+            class="mais-acoes-nota"
+            x-data
+            x-on:click.outside="$el.removeAttribute('open')"
+            x-on:toggle="if (!$el.open) { $el.querySelectorAll('.grupo-acao-contextual[open]').forEach(item => item.removeAttribute('open')) }"
+            x-on:keydown.escape.stop.prevent="$el.removeAttribute('open'); $refs.resumo.focus()"
+        >
+            <summary class="botao-mais-acoes" x-ref="resumo"><x-icone nome="mais-acoes" /> Mais ações</summary>
+            <div class="menu-mais-acoes">
+                <button type="button" class="acao-menu" x-on:click="copiarNota(@js(route('notas.exportar', ['nota' => $nota->id, 'texto' => 1])), @js(route('notas.exportar', $nota->id)))"><x-icone nome="copiar" /> Copiar como texto</button>
+                <a class="acao-menu" href="{{ route('notas.exportar', $nota->id) }}"><x-icone nome="baixar" /> Baixar .txt</a>
 
                 @unless($emLixeira)
-                    <form method="POST" action="{{ route('notas.etiquetas', $nota) }}">
-                        @csrf @method('PUT')
-                        <fieldset><legend>Etiquetas pessoais</legend>
-                            @forelse($etiquetas as $etiqueta)
-                                <label><input type="checkbox" name="etiquetas[]" value="{{ $etiqueta->id }}" @checked(in_array($etiqueta->id, $etiquetasAtuais))> {{ $etiqueta->nome }}</label>
-                            @empty
-                                <span>Crie uma etiqueta nos filtros.</span>
-                            @endforelse
-                        </fieldset>
-                        <button type="submit">Salvar etiquetas</button>
-                    </form>
-                    <form method="POST" action="{{ route('notas.lembrete', $nota) }}">
-                        @csrf
-                        <label>Lembrar em <input type="datetime-local" name="agendado_local" required></label>
-                        <input type="hidden" name="fuso_horario" value="{{ auth()->user()->fuso_horario }}">
-                        <label><input type="checkbox" name="enviar_email" value="1"> Enviar também por e-mail</label>
-                        <button type="submit">Agendar lembrete</button>
-                        <small>Fuso: {{ auth()->user()->fuso_horario }}</small>
-                    </form>
-                    @if($proprietaria)<a href="{{ route('compartilhamentos.index', ['nota' => $nota->id]) }}">Gerenciar compartilhamento</a>@endif
+                    @if($etiquetas->isNotEmpty())
+                        <details class="grupo-acao-contextual">
+                            <summary class="acao-menu" x-on:click="const atual = $event.currentTarget.parentElement; atual.parentElement.querySelectorAll(':scope > .grupo-acao-contextual[open]').forEach(item => { if (item !== atual) item.removeAttribute('open') })"><x-icone nome="etiqueta" /> Etiquetas</summary>
+                            <form method="POST" action="{{ route('notas.etiquetas', $nota) }}" class="painel-contextual">
+                                @csrf @method('PUT')
+                                <fieldset>
+                                    <legend>Etiquetas pessoais</legend>
+                                    <div class="opcoes-contextuais">
+                                        @foreach($etiquetas as $etiqueta)
+                                            <label><input type="checkbox" name="etiquetas[]" value="{{ $etiqueta->id }}" @checked(in_array($etiqueta->id, $etiquetasAtuais))> <span>{{ $etiqueta->nome }}</span></label>
+                                        @endforeach
+                                    </div>
+                                </fieldset>
+                                <button type="submit" class="botao-principal botao-compacto">Salvar etiquetas</button>
+                            </form>
+                        </details>
+                    @else
+                        <a class="acao-menu" href="{{ route('notas.inicio').'#gerenciar-etiquetas' }}"><x-icone nome="etiqueta" /> Criar ou gerenciar etiquetas</a>
+                    @endif
+
+                    <details class="grupo-acao-contextual">
+                        <summary class="acao-menu" x-on:click="const atual = $event.currentTarget.parentElement; atual.parentElement.querySelectorAll(':scope > .grupo-acao-contextual[open]').forEach(item => { if (item !== atual) item.removeAttribute('open') })"><x-icone nome="lembrete" /> Adicionar lembrete</summary>
+                        <form method="POST" action="{{ route('notas.lembrete', $nota) }}" class="painel-contextual">
+                            @csrf
+                            <label for="lembrete-{{ $nota->id }}">Lembrar em</label>
+                            <input id="lembrete-{{ $nota->id }}" type="datetime-local" name="agendado_local" required>
+                            <input type="hidden" name="fuso_horario" value="{{ auth()->user()->fuso_horario }}">
+                            <label class="opcao-checkbox"><input type="checkbox" name="enviar_email" value="1"> <span>Enviar também por e-mail</span></label>
+                            <small class="texto-auxiliar">Horário interpretado no fuso {{ auth()->user()->fuso_horario }}.</small>
+                            <button type="submit" class="botao-principal botao-compacto">Agendar lembrete</button>
+                        </form>
+                    </details>
+
+                    @if($proprietaria)
+                        <a class="acao-menu" href="{{ route('compartilhamentos.index', ['nota' => $nota->id]) }}"><x-icone nome="compartilhar" /> Gerenciar compartilhamento</a>
+                    @endif
                 @endunless
             </div>
         </details>

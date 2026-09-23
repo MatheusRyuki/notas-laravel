@@ -13,12 +13,19 @@ $urlBusca = route('lixeira.index', array_filter(['ordem' => $ordem, 'etiquetas' 
 
         <div class="ferramentas-notas"><x-busca-notas :action="route('lixeira.index')" :termo="$termo" :ordem="$ordem" :etiquetas-selecionadas="$etiquetasSelecionadas" placeholder="Buscar na lixeira" /></div>
 
-        <div class="painel-filtros"><form method="GET" action="{{ route('lixeira.index') }}">
-            @if($termo)<input type="hidden" name="q" value="{{ $termo }}">@endif
-            <label>Ordenar <select name="ordem"><option value="atualizacao" @selected($ordem==='atualizacao')>Remoção recente</option><option value="criacao" @selected($ordem==='criacao')>Criação recente</option><option value="titulo" @selected($ordem==='titulo')>Ordem alfabética</option></select></label>
-            <fieldset><legend>Filtrar por qualquer etiqueta</legend>@foreach($etiquetas as $etiqueta)<label><input type="checkbox" name="etiquetas[]" value="{{ $etiqueta->id }}" @checked(in_array($etiqueta->id,$etiquetasSelecionadas))> {{ $etiqueta->nome }}</label>@endforeach</fieldset>
-            <button type="submit">Aplicar filtros</button>
-        </form></div>
+        <x-filtros-notas
+            :action="route('lixeira.index')"
+            :termo="$termo"
+            :ordem="$ordem"
+            :opcoes-ordem="[
+                'atualizacao' => 'Remoção recente',
+                'criacao' => 'Criação recente',
+                'titulo' => 'Ordem alfabética',
+            ]"
+            :etiquetas="$etiquetas"
+            :etiquetas-selecionadas="$etiquetasSelecionadas"
+            secao="lixeira"
+        />
 
         <div class="barra-selecao">
             <button type="button" x-on:click="modoSelecao=!modoSelecao; if(!modoSelecao) selecionadas=[]" x-text="modoSelecao ? 'Sair da seleção' : 'Selecionar notas'"></button>

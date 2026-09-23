@@ -189,17 +189,214 @@ try:
     if len(bootstrap["notas"]) != 2:
         raise RuntimeError("Notas de teste nao foram criadas")
 
+    ativos = cdp.evaluate("""(async () => {
+        const links = [...document.querySelectorAll('link[rel="stylesheet"]')].map(link => link.href);
+        const scripts = [...document.querySelectorAll('script[type="module"]')].map(script => script.src);
+        const respostas = await Promise.all([...links, ...scripts].map(async url => (await fetch(url)).status));
+        return {links, scripts, respostas};
+    })()""")
+    if not ativos["links"] or not ativos["scripts"] or any(status != 200 for status in ativos["respostas"]):
+        raise RuntimeError("Assets atuais nao foram carregados")
+
+    fechado = cdp.evaluate("""(() => {
+        const detalhes = document.querySelector('.mais-acoes-nota');
+        const formulario = detalhes?.querySelector('.painel-contextual');
+        const select = document.querySelector('.controle-select');
+        const aplicar = document.querySelector('.botao-aplicar-filtros');
+        const estiloAplicar = aplicar ? getComputedStyle(aplicar) : null;
+        const cartaoLista = [...document.querySelectorAll('.cartao-nota')]
+            .find(item => item.textContent.includes('Lista de entrega'));
+        return {
+            detalhes: !!detalhes && !detalhes.open,
+            formularioOculto: !!formulario && formulario.offsetParent === null,
+            paddingSelect: select ? parseFloat(getComputedStyle(select).paddingRight) : 0,
+            fundoAplicar: estiloAplicar?.backgroundColor,
+            corAplicar: estiloAplicar?.color,
+            textoAplicar: aplicar?.textContent.trim(),
+            marcadoresLista: cartaoLista?.querySelectorAll('.marcador-item-lista svg').length ?? 0,
+            textosLista: cartaoLista?.querySelectorAll('.texto-item-lista').length ?? 0,
+        };
+    })()""")
+    if (
+        not fechado["detalhes"]
+        or not fechado["formularioOculto"]
+        or fechado["paddingSelect"] < 30
+        or fechado["textoAplicar"] != "Aplicar filtros"
+        or fechado["fundoAplicar"] in ("rgb(255, 255, 255)", "rgba(0, 0, 0, 0)", "transparent")
+        or fechado["corAplicar"] != "rgb(255, 255, 255)"
+        or fechado["marcadoresLista"] != 2
+        or fechado["textosLista"] != 2
+    ):
+        raise RuntimeError("Estado fechado ou estilo do filtro esta incorreto: " + json.dumps(fechado))
+
     cdp.screenshot("expansoes-notas-desktop.png")
+    aberto = cdp.evaluate("""(async () => {
+        const detalhes = document.querySelector('.mais-acoes-nota');
+        const resumo = detalhes.querySelector(':scope > summary');
+        resumo.click();
+        const contextuais = [...detalhes.querySelectorAll('.grupo-acao-contextual')];
+        const etiquetas = contextuais.find(item => item.textContent.includes('Etiquetas'));
+        const lembrete = contextuais.find(item => item.textContent.includes('Adicionar lembrete'));
+        etiquetas.querySelector('summary').click();
+        const etiquetasAbriram = etiquetas.querySelector('form').offsetParent !== null;
+        lembrete.querySelector('summary').click();
+        await new Promise(resolve => setTimeout(resolve, 50));
+        resumo.focus();
+        return {
+            aberto: detalhes.open,
+            etiquetasAbriram,
+            etiquetasFechadas: etiquetas.querySelector('form').offsetParent === null,
+            lembreteVisivel: lembrete.querySelector('form').offsetParent !== null,
+            acoesPrincipaisRecolhidas: [...detalhes.querySelectorAll(':scope > .menu-mais-acoes > .acao-menu')]
+                .every(item => item.offsetParent === null),
+            textoFuso: lembrete.textContent.includes('America/Sao_Paulo'),
+        };
+    })()""")
+    if not all(aberto.values()):
+        raise RuntimeError("Painel Mais acoes ou lembrete nao abriu corretamente: " + json.dumps(aberto))
+    cdp.screenshot("padronizacao-cartao-acoes-desktop.png")
+    escape = cdp.evaluate("""(() => {
+        const detalhes = document.querySelector('.mais-acoes-nota');
+        const resumo = detalhes.querySelector(':scope > summary');
+        detalhes.dispatchEvent(new KeyboardEvent('keydown', {key:'Escape', bubbles:true, cancelable:true}));
+        return {fechado: !detalhes.open, focoRetornado: document.activeElement === resumo};
+    })()""")
+    if not escape["fechado"] or not escape["focoRetornado"]:
+        raise RuntimeError("Escape nao fechou Mais acoes com retorno de foco")
+
+    horizontais = {}
+    for largura in (390, 320):
+        cdp.call("Emulation.setDeviceMetricsOverride", {
+            "width": largura, "height": 844, "deviceScaleFactor": 1, "mobile": True,
+        })
+        cdp.navigate("/?ordem=titulo")
+        time.sleep(0.5)
+        horizontais[str(largura)] = cdp.evaluate(
+            "document.documentElement.scrollWidth > document.documentElement.clientWidth"
+        )
+        if horizontais[str(largura)]:
+            raise RuntimeError(f"Rolagem horizontal detectada em {largura}px")
+        if largura == 390:
+            cdp.screenshot("expansoes-notas-celular.png")
+            mobile_acoes = cdp.evaluate("""(async () => {
+                const detalhes = document.querySelector('.mais-acoes-nota');
+                detalhes.querySelector(':scope > summary').click();
+                const lembrete = [...detalhes.querySelectorAll('.grupo-acao-contextual')]
+                    .find(item => item.textContent.includes('Adicionar lembrete'));
+                lembrete.querySelector('summary').click();
+                await new Promise(resolve => setTimeout(resolve, 50));
+                return {
+                    menuAberto: detalhes.open,
+                    contextuaisAbertos: detalhes.querySelectorAll('.grupo-acao-contextual[open]').length,
+                    lembreteVisivel: lembrete.querySelector('form').offsetParent !== null,
+                    rolagemHorizontal: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+                };
+            })()""")
+            if (
+                not mobile_acoes["menuAberto"]
+                or mobile_acoes["contextuaisAbertos"] != 1
+                or not mobile_acoes["lembreteVisivel"]
+                or mobile_acoes["rolagemHorizontal"]
+            ):
+                raise RuntimeError("Mais acoes nao esta padronizado em 390px: " + json.dumps(mobile_acoes))
+            cdp.screenshot("padronizacao-mais-acoes-390.png")
+            cdp.evaluate("""(() => {
+                const detalhes = document.querySelector('.mais-acoes-nota');
+                detalhes.dispatchEvent(new KeyboardEvent('keydown', {key:'Escape', bubbles:true, cancelable:true}));
+            })()""")
+        else:
+            cdp.evaluate("document.querySelector('#gerenciar-etiquetas > summary').click()")
+            cdp.screenshot("padronizacao-filtros-320.png")
 
     cdp.call("Emulation.setDeviceMetricsOverride", {
         "width": 390, "height": 844, "deviceScaleFactor": 1, "mobile": True,
     })
-    cdp.navigate("/?ordem=titulo")
+    cdp.navigate("/")
     time.sleep(0.5)
-    horizontal = cdp.evaluate("document.documentElement.scrollWidth > document.documentElement.clientWidth")
-    if horizontal:
-        raise RuntimeError("Rolagem horizontal detectada em 390px")
-    cdp.screenshot("expansoes-notas-celular.png")
+    abriu_lista = cdp.evaluate("""(() => {
+        const cartao = [...document.querySelectorAll('.cartao-nota')]
+            .find(item => item.textContent.includes('Lista de entrega'));
+        cartao?.querySelector('.conteudo-nota')?.click();
+        return !!cartao;
+    })()""")
+    if not abriu_lista:
+        raise RuntimeError("Cartao da lista nao foi encontrado")
+    for _ in range(30):
+        time.sleep(0.1)
+        if cdp.evaluate("""(() => {
+            const dialogo = document.querySelector('#titulo-modal-edicao')?.closest('[role="dialog"]');
+            return !!dialogo && dialogo.offsetParent !== null && !!dialogo.querySelector('.estado-item-lista');
+        })()"""):
+            break
+    lista_ui = cdp.evaluate("""(() => {
+        const dialogo = document.querySelector('#titulo-modal-edicao')?.closest('[role="dialog"]');
+        const linhas = [...dialogo.querySelectorAll('.linha-item')];
+        return {
+            linhas: linhas.length,
+            campos: dialogo.querySelectorAll('.campo-item-lista').length,
+            acoes: dialogo.querySelectorAll('.acoes-item-lista').length,
+            setasSvg: dialogo.querySelectorAll('.botao-icone-lista svg').length,
+            removerComIcone: dialogo.querySelectorAll('.botao-remover-item svg').length,
+            rolagemHorizontal: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+        };
+    })()""")
+    if (
+        lista_ui["linhas"] != 2
+        or lista_ui["campos"] != 2
+        or lista_ui["acoes"] != 2
+        or lista_ui["setasSvg"] != 4
+        or lista_ui["removerComIcone"] != 2
+        or lista_ui["rolagemHorizontal"]
+    ):
+        raise RuntimeError("Editor de lista nao esta padronizado em 390px: " + json.dumps(lista_ui))
+    cdp.screenshot("padronizacao-lista-390.png")
+    cdp.evaluate("document.querySelector('#titulo-modal-edicao').closest('[role=dialog]').querySelector('.fechar-modal').click()")
+
+    cdp.navigate("/arquivadas")
+    time.sleep(0.4)
+    if "Nenhuma nota arquivada" not in cdp.evaluate("document.body.innerText"):
+        raise RuntimeError("Estado vazio de Arquivadas nao foi exibido")
+    cdp.screenshot("padronizacao-arquivadas-vazia-390.png")
+    cdp.navigate("/lixeira")
+    time.sleep(0.4)
+    if "A lixeira está vazia" not in cdp.evaluate("document.body.innerText"):
+        raise RuntimeError("Estado vazio da Lixeira nao foi exibido")
+    cdp.screenshot("padronizacao-lixeira-vazia-390.png")
+
+    cdp.navigate("/lembretes")
+    time.sleep(0.4)
+    lembretes_vazio = cdp.evaluate("""(() => ({
+        paineis: document.querySelectorAll('.painel-lembretes').length,
+        contadores: [...document.querySelectorAll('.painel-lembretes .contador-secao')].map(item => item.textContent.trim()),
+        estadosVazios: document.querySelectorAll('.estado-lembretes-vazio').length,
+        icones: document.querySelectorAll('.estado-lembretes-vazio svg').length,
+        rolagemHorizontal: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    }))()""")
+    if (
+        lembretes_vazio["paineis"] != 2
+        or lembretes_vazio["contadores"] != ["0", "0"]
+        or lembretes_vazio["estadosVazios"] != 2
+        or lembretes_vazio["icones"] != 2
+        or lembretes_vazio["rolagemHorizontal"]
+    ):
+        raise RuntimeError("Estado vazio de Lembretes nao esta padronizado: " + json.dumps(lembretes_vazio))
+    cdp.screenshot("padronizacao-lembretes-vazio-390.png")
+
+    cdp.call("Emulation.clearDeviceMetricsOverride")
+    cdp.navigate("/compartilhamentos")
+    time.sleep(0.4)
+    cdp.screenshot("padronizacao-compartilhamentos-desktop.png")
+    cdp.call("Emulation.setDeviceMetricsOverride", {
+        "width": 320, "height": 844, "deviceScaleFactor": 1, "mobile": True,
+    })
+    cdp.navigate("/compartilhamentos")
+    time.sleep(0.4)
+    compartilhamento_horizontal = cdp.evaluate(
+        "document.documentElement.scrollWidth > document.documentElement.clientWidth"
+    )
+    if compartilhamento_horizontal:
+        raise RuntimeError("Compartilhamentos tem rolagem horizontal em 320px")
+    cdp.screenshot("padronizacao-compartilhamentos-320.png")
 
     cdp.call("Emulation.clearDeviceMetricsOverride")
     cdp.navigate("/")
@@ -279,10 +476,21 @@ try:
         "conta": email,
         "notas_online": len(bootstrap["notas"]),
         "offline_sincronizada": True,
-        "rolagem_horizontal_390": horizontal,
+        "rolagem_horizontal": horizontais,
+        "compartilhamentos_horizontal_320": compartilhamento_horizontal,
+        "assets_carregados": ativos,
+        "mais_acoes_escape": escape,
+        "editor_lista_390": lista_ui,
+        "lembretes_vazio_390": lembretes_vazio,
+        "mais_acoes_390": mobile_acoes,
         "capturas": [
             "expansoes-notas-desktop.png", "expansoes-notas-celular.png",
             "expansoes-lembretes-desktop.png", "expansoes-offline-celular.png",
+            "padronizacao-cartao-acoes-desktop.png", "padronizacao-filtros-320.png",
+            "padronizacao-arquivadas-vazia-390.png", "padronizacao-lixeira-vazia-390.png",
+            "padronizacao-compartilhamentos-desktop.png", "padronizacao-compartilhamentos-320.png",
+            "padronizacao-lista-390.png", "padronizacao-lembretes-vazio-390.png",
+            "padronizacao-mais-acoes-390.png",
         ],
     }, ensure_ascii=False))
 finally:
