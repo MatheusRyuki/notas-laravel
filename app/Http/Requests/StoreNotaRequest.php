@@ -80,7 +80,7 @@ class StoreNotaRequest extends FormRequest
         ]);
     }
 
-    private function textoLimpo(string $campo): ?string
+    private function textoLimpo(string $campo): mixed
     {
         $valor = $this->input($campo);
         if (! is_string($valor)) {

@@ -136,6 +136,87 @@ class SincronizacaoResilienciaTest extends TestCase
         $this->assertSame('Versão atual', $nota->fresh()->titulo);
     }
 
+    public function test_repeticao_revalida_acesso_estado_e_permissao_sem_reaplicar(): void
+    {
+        foreach (['revogada', 'removida', 'excluida', 'leitor'] as $cenario) {
+            $dono = User::factory()->create();
+            $editor = User::factory()->create();
+            $nota = $this->nota($dono);
+            $nota->participantes()->attach($editor->id, ['papel' => 'editor']);
+            $corpo = $this->atualizacao($editor, $nota, (string) Str::uuid(), $nota->revisao, 'Confirmada');
+            $this->actingAs($editor)->postJson(route('sincronizacao.executar'), $corpo)
+                ->assertOk()->assertJsonPath('resultados.0.status', 'sincronizado');
+            $revisao = $nota->fresh()->revisao;
+
+            match ($cenario) {
+                'revogada' => $nota->participantes()->detach($editor->id),
+                'removida' => $nota->delete(),
+                'excluida' => $nota->forceDelete(),
+                'leitor' => $nota->participantes()->updateExistingPivot($editor->id, ['papel' => 'leitor']),
+            };
+
+            // Alterar o corpo da repetição não pode contornar a identidade gravada.
+            $corpo['operacoes'][0]['nota_uuid'] = (string) Str::uuid();
+            $resposta = $this->postJson(route('sincronizacao.executar'), $corpo)->assertOk();
+            if ($cenario === 'leitor') {
+                $resposta->assertJsonPath('resultados.0.status', 'sincronizado')
+                    ->assertJsonPath('resultados.0.nota.papel', 'leitor')
+                    ->assertJsonPath('resultados.0.nota.pode_editar', false);
+                $this->assertSame($revisao, $nota->fresh()->revisao);
+                $this->assertSame('Confirmada', $nota->fresh()->titulo);
+            } else {
+                $resposta->assertJsonPath('resultados.0.status', 'revogado_ou_excluido')
+                    ->assertJsonPath('resultados.0.nota_uuid', $nota->uuid_sincronizacao)
+                    ->assertJsonMissingPath('resultados.0.nota')
+                    ->assertJsonMissingPath('resultados.0.atual');
+            }
+        }
+    }
+
+    public function test_conflito_armazenado_nao_expoe_conteudo_apos_revogacao(): void
+    {
+        $dono = User::factory()->create();
+        $editor = User::factory()->create();
+        $nota = $this->nota($dono);
+        $nota->participantes()->attach($editor->id, ['papel' => 'editor']);
+        $corpo = $this->atualizacao($editor, $nota, (string) Str::uuid(), $nota->revisao, 'Local');
+        $nota->forceFill(['revisao' => $nota->revisao + 1])->save();
+        $this->actingAs($editor)->postJson(route('sincronizacao.executar'), $corpo)
+            ->assertJsonPath('resultados.0.status', 'conflito');
+        $nota->participantes()->updateExistingPivot($editor->id, ['papel' => 'leitor']);
+        $this->postJson(route('sincronizacao.executar'), $corpo)
+            ->assertJsonPath('resultados.0.status', 'somente_leitura')
+            ->assertJsonPath('resultados.0.nota.pode_editar', false);
+        $nota->participantes()->detach($editor->id);
+        $this->postJson(route('sincronizacao.executar'), $corpo)
+            ->assertJsonPath('resultados.0.status', 'revogado_ou_excluido')
+            ->assertJsonMissingPath('resultados.0.atual')
+            ->assertJsonMissingPath('resultados.0.local');
+    }
+
+    public function test_titulo_e_descricao_com_tipo_invalido_retornam_validacao_sem_gravar(): void
+    {
+        $usuario = User::factory()->create();
+        $nota = $this->nota($usuario);
+        $this->actingAs($usuario);
+        foreach (['titulo', 'descricao'] as $campo) {
+            foreach ([['indevido'], 123, true] as $valor) {
+                $dados = [
+                    'titulo' => 'Válido',
+                    'descricao' => 'Válida',
+                    'tipo_conteudo' => 'texto',
+                    'revisao' => $nota->revisao,
+                    $campo => $valor,
+                ];
+                $this->postJson(route('notas.store'), $dados)->assertUnprocessable()->assertJsonValidationErrors($campo);
+                $this->patchJson(route('notas.update', $nota), $dados)->assertUnprocessable()->assertJsonValidationErrors($campo);
+            }
+        }
+        $this->assertSame(1, Nota::count());
+        $this->assertSame('Original', $nota->fresh()->titulo);
+        $this->assertSame($nota->revisao, $nota->fresh()->revisao);
+    }
+
     private function nota(User $usuario, string $titulo = 'Original'): Nota
     {
         $nota = new Nota;

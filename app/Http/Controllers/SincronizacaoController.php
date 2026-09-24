@@ -51,7 +51,7 @@ class SincronizacaoController extends Controller
                 ->where('operacao_uuid', $operacao['uuid'])
                 ->first();
             if ($anterior) {
-                $resultados[] = $anterior->resultado;
+                $resultados[] = $this->recuperarResultado($request, $anterior, $payloads);
 
                 continue;
             }
@@ -62,7 +62,7 @@ class SincronizacaoController extends Controller
                     ->lockForUpdate()
                     ->first();
                 if ($existente) {
-                    return $existente->resultado;
+                    return $this->recuperarResultado($request, $existente, $payloads);
                 }
 
                 try {
@@ -92,6 +92,43 @@ class SincronizacaoController extends Controller
         }
 
         return response()->json(['conta_id' => $request->user()->id, 'resultados' => $resultados]);
+    }
+
+    private function recuperarResultado(Request $request, OperacaoSincronizacao $operacao, NotaPayloadService $payloads): array
+    {
+        $resultado = $operacao->resultado;
+        // Usa a identidade gravada, nunca a identidade enviada na repetição.
+        $uuid = $resultado['nota']['uuid'] ?? $resultado['atual']['uuid'] ?? null;
+        if (! $uuid) {
+            return $resultado;
+        }
+
+        $nota = Nota::where('uuid_sincronizacao', $uuid)->first();
+        if (! $nota || ! $request->user()->can('view', $nota)) {
+            return [
+                'operacao_uuid' => $operacao->operacao_uuid,
+                'status' => 'revogado_ou_excluido',
+                'nota_uuid' => $uuid,
+                'mensagem' => 'A nota foi excluída ou seu acesso foi revogado.',
+            ];
+        }
+
+        $atual = $payloads->representar($nota, $request->user());
+        if ($resultado['status'] === 'conflito' && ! $request->user()->can('update', $nota)) {
+            return [
+                'operacao_uuid' => $operacao->operacao_uuid,
+                'status' => 'somente_leitura',
+                'nota_uuid' => $uuid,
+                'nota' => $atual,
+                'mensagem' => 'Sua permissão mudou para somente leitura. A alteração local não foi aplicada.',
+            ];
+        }
+
+        // Confirma a gravação concluída sem reaplicá-la e devolve o estado atual.
+        $campo = isset($resultado['atual']) ? 'atual' : 'nota';
+        $resultado[$campo] = $atual;
+
+        return $resultado;
     }
 
     private function criar(Request $request, array $operacao, NotaPayloadService $payloads): array

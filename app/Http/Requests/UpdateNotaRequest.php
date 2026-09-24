@@ -74,7 +74,7 @@ class UpdateNotaRequest extends FormRequest
         $this->merge($dados);
     }
 
-    private function textoLimpo(string $campo): ?string
+    private function textoLimpo(string $campo): mixed
     {
         $valor = $this->input($campo);
         if (! is_string($valor)) {
