@@ -2,9 +2,9 @@
 
 Aplicação de estudo inspirada no Google Keep, sem vínculo com o Google. Nenhum código, logotipo ou template do Google foi copiado.
 
-O curso não forneceu arquivos de template. A interface usada pelo aplicativo é própria, foi criada neste projeto e é apenas inspirada no Google Keep. Não há cópia original-template/ nem integração de template pendente.
+A interface e os fundos SVG são próprios do projeto.
 
-A interface simples desta etapa usa Blade e componentes adaptados do Laravel Breeze. Os desenhos da marca e do estado vazio são SVGs próprios, sem imagens externas. Fontes do sistema evitam downloads de terceiros.
+A interface usa Blade e componentes adaptados do Laravel Breeze. Os desenhos da marca e do estado vazio são SVGs próprios, sem imagens externas. Fontes do sistema evitam downloads de terceiros.
 
 - Laravel e esqueleto Laravel: Taylor Otwell e colaboradores, MIT — https://github.com/laravel/laravel e https://github.com/laravel/framework
 - Breeze: Taylor Otwell e colaboradores, MIT — https://github.com/laravel/breeze

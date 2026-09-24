@@ -1,147 +1,33 @@
 # Notas
 
-Aplicativo de notas com interface própria, inspirado no Google Keep, desenvolvido em Laravel com ambiente Docker/Sail independente.
+Aplicativo de notas desenvolvido como projeto de estudo em Laravel. Organize textos e listas, compartilhe notas e continue escrevendo mesmo sem conexão.
 
-- Aplicação: http://localhost:8004
-- Correio local: http://localhost:8026
+A interface está em português, com Blade, Alpine.js e Tailwind CSS. O visual e os fundos SVG são próprios, inspirados no Google Keep.
 
-## Funcionalidades disponíveis
+![Tela de notas](docs/capturas/expansoes-notas-desktop.png)
 
-- Cadastro, login, logout e recuperação/redefinição de senha com Breeze e Blade.
-- Perfil: nome, e-mail, senha e fuso horário.
-- Página inicial protegida, com nome real do usuário, perfil e saída.
-- Criação, listagem e edição de notas em modal.
-- Fixação e desafixação com estado textual e grupos **Fixadas** e **Outras**.
-- Cores suaves e opção Padrão na criação e na edição.
-- Galeria de quatro fundos SVG locais na criação e na edição.
-- Arquivamento e desarquivamento em uma página própria, com edição das notas arquivadas.
-- Lixeira por exclusão lógica, consulta somente leitura, restauração ao destino anterior e exclusão definitiva confirmada.
-- Busca por título, descrição e itens de lista enquanto o usuário digita, nas seções Notas, Arquivadas e Lixeira.
-- Ordenação, etiquetas pessoais, listas de tarefas e ações em lote.
-- Desfazer arquivamento e envio à lixeira por cinco minutos.
-- Cópia e download UTF-8 das notas.
-- Lembretes com notificações internas e e-mail opcional no Mailpit.
-- Compartilhamento com proprietário, editor e leitor, convites internos e conflitos por revisão.
-- Leitura, criação e edição offline com fila idempotente e resolução de conflitos.
-- Prévia de aparência no modal, persistida somente depois de salvar.
-- Cancelamento, fechamento e Escape sem alterar texto ou aparência salvos.
-- Validações junto aos campos, proteção CSRF e bloqueio de envios duplicados.
-- Conteúdo escapado, interface em pt-BR, layout responsivo e uso por teclado.
-- Mailpit para recuperação de senha local.
+## Funcionalidades
 
-Não há eliminação automática nem ação de esvaziar a lixeira.
+- Notas de texto e listas de tarefas, com edição em modal.
+- Fixação, cores, fundos locais, etiquetas pessoais e ordenação.
+- Busca enquanto digita, incluindo itens de listas.
+- Arquivo, lixeira, restauração e exclusão definitiva com confirmação.
+- Ações em lote e opção de desfazer arquivamento ou envio à lixeira por cinco minutos.
+- Cópia e download das notas em texto.
+- Lembretes com notificações no aplicativo e e-mail opcional.
+- Compartilhamento com permissões de leitura ou edição.
+- Consulta, criação e edição offline, com sincronização e resolução de conflitos.
+- Cadastro, login, recuperação de senha e atualização do perfil.
 
-A interface e os fundos são próprios do projeto e apenas inspirados no Google Keep. O curso não forneceu arquivos de template e não há integração externa pendente.
+## Executar localmente
 
-## Notas e segurança
+Você precisa de Git, Docker com Compose e internet para baixar as dependências. No Windows, use o Ubuntu no WSL2 com a integração do Docker Desktop habilitada. No Linux, use Docker Engine com Compose.
 
-O proprietário vem exclusivamente da sessão autenticada. O cliente não pode escolher ou alterar `usuario_id`. A policy aplica propriedade e papéis de colaboração em todas as rotas. Editor altera somente conteúdo e aparência; leitor apenas consulta e exporta; estados e participantes pertencem ao proprietário.
-
-- Título: opcional quando há descrição, até 255 caracteres.
-- Descrição: opcional quando há título, até 10.000 caracteres.
-- Espaços externos são removidos; quebras de linha internas são preservadas.
-- A saída Blade escapa título e descrição.
-- A listagem ordena por fixação, atualização mais recente e ID mais alto.
-- A fixação altera somente `fixada` e preserva toda a aparência.
-- Uma edição somente de texto preserva a aparência existente.
-
-## Aparência
-
-O servidor aceita apenas identificadores dos enums `CorNota`, `FundoNota` e `TipoAparencia`. Caminhos livres, URLs externas e CSS enviados pelo navegador não fazem parte do contrato.
-
-A paleta contém Padrão, Areia, Menta, Céu, Lavanda e Pêssego. Padrão grava `cor = null`. Escolher qualquer cor define `tipo_aparencia = cor` e limpa `caminho_imagem`.
-
-| Identificador | Nome | Arquivo local |
-| --- | --- | --- |
-| `folhas` | Folhas tranquilas | `public/images/fundos/folhas-tranquilas.svg` |
-| `ondas` | Ondas suaves | `public/images/fundos/ondas-suaves.svg` |
-| `geometria` | Formas serenas | `public/images/fundos/formas-serenas.svg` |
-| `constelacao` | Céu pontilhado | `public/images/fundos/ceu-pontilhado.svg` |
-
-Escolher um fundo define `tipo_aparencia = imagem`, limpa `cor` e grava o caminho obtido pelo catálogo interno. A camada clara sobre os SVGs mantém textos e controles legíveis; o fundo neutro permanece caso um arquivo não carregue.
-
-## Arquivamento
-
-A ação recebe explicitamente `arquivada = true` ou `false`, valida o valor e altera somente esse campo. Repetir o mesmo estado não inverte o resultado. Título, descrição, cor, fundo, fixação, proprietário e `deleted_at` permanecem intactos.
-
-A fixação é preservada enquanto a nota está arquivada. Ao desarquivar, uma nota fixada retorna ao grupo **Fixadas**; as demais retornam a **Outras**. A tela principal consulta somente notas ativas e `/arquivadas` consulta somente notas arquivadas, sempre a partir da relação do usuário autenticado e sem incluir soft deletes.
-
-Notas arquivadas podem ser abertas e editadas no modal. Salvar, cancelar, fechar ou pressionar Escape mantém o usuário na seção Arquivadas e não altera o estado de arquivamento.
-## Lixeira
-
-**Mover para a lixeira** usa `SoftDeletes` e preserva título, descrição, aparência, fixação e o estado de arquivamento. As listagens normais e seus endpoints de alteração usam o escopo padrão e rejeitam notas removidas, inclusive quando uma aba antiga tenta enviar uma alteração.
-
-`/lixeira` consulta somente notas removidas do usuário autenticado, ordenadas por `deleted_at DESC` e `id DESC`. O conteúdo abre em um modal somente leitura. Restaurar mantém o mesmo ID e devolve uma nota arquivada para **Arquivadas** ou uma nota ativa para **Minhas notas**, preservando fixação e aparência.
-
-A exclusão definitiva só aceita notas que já estejam na lixeira. A confirmação é uma página GET autorizada, sem mutação, que identifica a nota e contém um formulário protegido por CSRF com method spoofing para `DELETE`. Cancelar, fechar ou pressionar Escape não exclui; o fluxo também funciona sem JavaScript. Os SVGs são arquivos compartilhados do catálogo e nunca são apagados com uma nota.
-## Busca
-
-A busca usa o parâmetro GET `q`, aceita até 100 caracteres e funciona por envio convencional sem JavaScript. Espaços externos são removidos; consulta vazia restaura a listagem normal. O termo permanece na URL ao recarregar, compartilhar o endereço e navegar entre **Minhas notas**, **Arquivadas** e **Lixeira**.
-
-Título e descrição são consultados com parâmetros vinculados. `%`, `_` e `!` são escapados e tratados como caracteres literais. O `OR` fica agrupado dentro da relação do usuário e dos filtros da seção: ativas na tela principal, arquivadas em `/arquivadas` e somente removidas em `/lixeira`.
-
-Com JavaScript, há debounce de 300 ms, cancelamento da requisição anterior e uma sequência que impede respostas antigas ou de outra seção de substituir o resultado atual. O campo mantém foco. Carregamento, nenhum resultado e falha de comunicação têm estados separados em pt-BR. Os cartões retornados são reinicializados pelo Alpine, sem duplicar manipuladores.
-
-A consulta acompanha criação, edição, fixação, arquivamento, lixeira, restauração e exclusão. Após uma mutação, o servidor recalcula a lista; uma nota que deixou de corresponder desaparece.
-
-## Expansões funcionais
-
-### Desfazer, ordenação e exportação
-
-Arquivar e mover para a lixeira, individualmente ou em lote, geram uma operação de desfazer vinculada ao usuário. O token vale cinco minutos, pode ser usado uma vez e só reverte a nota quando a revisão esperada ainda é a atual. O lote é revertido integralmente ou permanece inalterado. Exclusão definitiva não oferece desfazer.
-
-As três seções aceitam `ordem=atualizacao|criacao|titulo`. Na tela principal, Fixadas continuam antes de Outras; o critério escolhido é aplicado dentro dos grupos, com ID como desempate. Na ordem alfabética, notas sem título ficam por último.
-
-Toda nota consultável pode ser copiada como texto ou baixada em `.txt` UTF-8. Listas usam `[x]` e `[ ]`; IDs, papéis e metadados internos não são exportados. Se a área de transferência falhar, a interface oferece o download.
-
-### Etiquetas, listas e lotes
-
-Etiquetas têm até 60 caracteres, removem espaços externos, condensam espaços internos e são únicas por usuário sem diferenciar maiúsculas. As associações são pessoais até em notas compartilhadas. O filtro aceita várias etiquetas com semântica "qualquer uma" e combina com seção e busca. Excluir uma etiqueta preserva as notas.
-
-Notas podem ser de texto ou lista. O tipo é escolhido na criação e não muda na edição. Uma lista exige de 1 a 100 itens não vazios; cada item aceita até 500 caracteres, conclusão e posição. Os botões de subir e descer permitem reordenação por teclado. Busca e exportação incluem itens concluídos e pendentes.
-
-O modo de seleção envia apenas os IDs marcados. Arquivar, desarquivar, mover, restaurar e aplicar ou remover etiquetas validam todos os registros dentro de uma transação. Se um ID, estado ou permissão falhar, o lote inteiro é recusado. Exclusão definitiva continua individual.
-
-### Lembretes
-
-Cada usuário pode manter um lembrete pessoal por nota acessível, reagendar ou cancelar. O horário informado usa o fuso do perfil (padrão `America/Sao_Paulo`) e é armazenado em UTC. O processamento cria uma notificação interna persistida e, quando escolhido, enfileira e-mail exclusivamente para o Mailpit local.
-
-Arquivar mantém o lembrete. A lixeira o suspende; restaurar reativa apenas horários futuros. Horários vencidos exigem reagendamento. Revogação de acesso e exclusão definitiva impedem envios posteriores. A chave única da notificação e o lock da linha evitam duplicação; falhas de e-mail seguem as tentativas e a tabela de falhas padrão da fila.
-
-Os serviços `queue` e `scheduler` do Compose executam `queue:work` e `schedule:work`. O scheduler chama `lembretes:processar` a cada minuto.
-
-### Compartilhamento e conflitos
-
-Convites internos usam o e-mail exato de uma conta cadastrada e só concedem acesso depois da aceitação. Não existe diretório público.
-
-| Papel | Permissões |
-| --- | --- |
-| Proprietário | Conteúdo, aparência, participantes e todos os estados da nota |
-| Editor | Consulta e edita título, descrição, itens e aparência |
-| Leitor | Consulta, copia e baixa |
-
-Somente o proprietário fixa, arquiva, envia para a lixeira, restaura ou exclui. Etiquetas e lembretes continuam pessoais. Uma nota compartilhada na lixeira fica visível apenas ao proprietário; a restauração preserva participantes ainda válidos.
-
-Cada alteração avança `revisao`. O salvamento bloqueia a linha e compara a revisão recebida; uma versão antiga recebe HTTP 409 com a versão local e a atual para decisão explícita. Revogar ou sair remove lembretes e etiquetas pessoais daquele participante.
-
-### Offline e sincronização
-
-Depois do primeiro login online, um service worker armazena apenas o shell estático e o IndexedDB separa notas, operações e conflitos por conta. Respostas autenticadas não entram no cache global. O shell permite consultar dados previamente disponibilizados, criar texto ou lista e editar conteúdo e aparência conforme a última permissão conhecida.
-
-Cada operação possui UUID, sequência e revisão base. O servidor guarda o resultado por usuário e UUID, portanto repetir uma criação depois de perder a resposta não duplica a nota. Operações seguem a ordem local; conflitos não sobrescrevem automaticamente. Exclusão ou revogação retorna `revogado_ou_excluido` e remove a cópia correspondente do armazenamento da aplicação.
-
-Compartilhamento, lembretes, etiquetas, lotes e operações destrutivas exigem conexão. Sair offline não afirma que a sessão do servidor foi encerrada. No logout online, o servidor responde antes da limpeza local; pendências exigem confirmação. Trocar de conta elimina dados da conta anterior e informa quando havia pendências descartadas.
-
-O armazenamento do navegador pode ser apagado pelo usuário ou pelo sistema. Uma revogação não apaga instantaneamente uma cópia em um dispositivo ainda desconectado. O modo offline não substitui backup.
-
-As decisões do esquema estão em [docs/modelo-nota.md](docs/modelo-nota.md).
-
-## Instalação
-
-Requisitos: Docker Desktop com WSL2/Ubuntu, ou Docker Engine com Compose no Linux, Git e internet. Não instale PHP, Composer ou Herd no computador.
+PHP, Composer e Node.js rodam em containers. Não é necessário instalá-los globalmente.
 
 ```bash
-cd /home/dr_4_/clone_google_keep
+git clone https://github.com/MatheusRyuki/notas-laravel.git
+cd notas-laravel
 cp .env.example .env
 
 docker run --rm \
@@ -159,72 +45,196 @@ docker run --rm \
 ./vendor/bin/sail npm run build
 ```
 
-A dispensa de requisitos ocorre somente no bootstrap. A instalação definitiva e sua validação usam PHP 8.5 dentro do Sail. Atualizações usam `./vendor/bin/sail artisan migrate`; não resete o banco existente.
+Acesse [localhost:8004](http://localhost:8004) e crie sua conta.
 
-## Portas e isolamento
+O primeiro comando do Composer prepara o Sail. A instalação seguinte e a conferência dos requisitos usam o PHP 8.5 do container. Em instalações existentes, aplique novas migrations com `./vendor/bin/sail artisan migrate`, sem recriar o banco.
 
-| Recurso | Host | Entre containers |
+### Portas e serviços
+
+| Serviço | Endereço local | Entre containers |
 | --- | --- | --- |
-| Aplicação | http://localhost:8004 | laravel.test:80 |
-| MySQL | 127.0.0.1:33061 | mysql:3306 |
-| Vite | http://localhost:5174 | laravel.test:5174 |
-| Mailpit | http://localhost:8026 | mailpit:8025 |
-| SMTP | Não publicado | mailpit:1025 |
+| Aplicação | http://localhost:8004 | `laravel.test:80` |
+| MySQL | `127.0.0.1:33061` | `mysql:3306` |
+| Vite | http://localhost:5174 | `laravel.test:5174` |
+| Mailpit | http://localhost:8026 | `mailpit:8025` |
+| SMTP | Sem porta publicada | `mailpit:1025` |
 
-- Compose: `notas`.
-- Rede: `notas-rede`.
-- Volume: `notas-mysql`.
-- Imagem: `notas-app:php85`.
-- Banco e usuário MySQL: `notas`.
-- Cookie: `notas_session`.
-- Serviços publicados somente em `127.0.0.1`.
+Confira se as portas estão livres antes de iniciar. Os serviços são publicados apenas em `127.0.0.1`.
 
-## Comandos úteis
+O projeto Compose se chama `notas`, usa a rede `notas-rede`, o volume `notas-mysql` e a imagem `notas-app:php85`. Banco e usuário MySQL se chamam `notas`. O cookie de sessão é `notas_session`.
+
+### Comandos do dia a dia
 
 ```bash
 ./vendor/bin/sail up -d
-./vendor/bin/sail up -d queue scheduler
 ./vendor/bin/sail ps
-./vendor/bin/sail artisan migrate
 ./vendor/bin/sail npm run dev
 ./vendor/bin/sail npm run build
+./vendor/bin/sail down
+```
+
+Use `npm run dev` durante o desenvolvimento e `npm run build` para gerar os assets. Ao parar os serviços, use `down` sem `-v` para preservar os dados.
+
+### Recuperação de senha e e-mails
+
+Os e-mails ficam no [Mailpit local](http://localhost:8026). Para recuperar a senha, saia da conta, escolha **Esqueci minha senha** e informe o e-mail cadastrado. Abra a mensagem no Mailpit e use o link recebido. Ele expira em 60 minutos.
+
+Os lembretes também usam o Mailpit. O envio para caixas de e-mail externas não está configurado.
+
+## Como as notas funcionam
+
+### Conteúdo e organização
+
+Notas de texto aceitam título de até 255 caracteres e descrição de até 10.000. Pelo menos um desses campos precisa ter conteúdo. Espaços nas extremidades são removidos; quebras de linha da descrição são mantidas.
+
+Uma lista tem de 1 a 100 itens, com até 500 caracteres por item. Você pode marcar a conclusão e reordenar pelos botões de subir e descer. O tipo da nota é escolhido na criação e não muda durante a edição.
+
+Notas fixadas aparecem antes das demais. A ordenação pode ser por atualização, criação ou título, com ID como desempate. Na ordem alfabética, notas sem título ficam por último.
+
+Etiquetas são pessoais, inclusive nas notas compartilhadas. Os nomes aceitam até 60 caracteres e são únicos por conta, sem diferenciar maiúsculas e minúsculas. Selecionar várias etiquetas encontra notas que tenham **qualquer uma** delas. Excluir uma etiqueta preserva as notas.
+
+### Cores e fundos
+
+A paleta tem Padrão, Areia, Menta, Céu, Lavanda e Pêssego. A galeria oferece quatro fundos locais: Folhas tranquilas, Ondas suaves, Formas serenas e Céu pontilhado. Não há upload de imagens.
+
+A aparência escolhida no modal é uma prévia e só passa a valer ao salvar. Cancelar ou fechar mantém a aparência anterior. Escolher uma cor remove a imagem de fundo; Padrão restaura a aparência neutra.
+
+O servidor aceita apenas identificadores do catálogo. Os campos e arquivos estão descritos no [modelo das notas](docs/modelo-nota.md).
+
+### Arquivo, lixeira e desfazer
+
+Arquivar retira a nota da tela principal e mantém conteúdo, aparência e fixação. A nota continua editável em **Arquivadas**. Ao desarquivar, volta ao grupo correspondente.
+
+A lixeira permite consultar, restaurar ou excluir definitivamente. Restaurar recupera a mesma nota, com seu ID e estados anteriores: uma nota arquivada retorna a **Arquivadas**. Para editar uma nota removida, restaure-a primeiro.
+
+A exclusão definitiva exige confirmação e não pode ser desfeita. Os fundos SVG são compartilhados e não são apagados com a nota. Não há exclusão automática por prazo nem opção de esvaziar toda a lixeira.
+
+Arquivamento e envio à lixeira podem ser desfeitos por cinco minutos, desde que não exista uma alteração posterior que impeça a reversão. Cada operação pode ser desfeita uma vez. Ações em lote validam todas as notas: se alguma falhar, o lote inteiro é recusado.
+
+### Busca e exportação
+
+A busca considera título, descrição e itens de lista, incluindo os concluídos. Ela respeita a seção atual: **Minhas notas**, **Arquivadas** ou **Lixeira**.
+
+O termo aceita até 100 caracteres e fica na URL para manter a consulta ao recarregar ou mudar de seção. Uma busca vazia restaura a listagem. Caracteres como `%` e `_` são tratados como texto.
+
+A consulta acontece após uma pausa de 300 ms na digitação. Respostas antigas são descartadas, e a interface distingue carregamento, ausência de resultados e falha de comunicação. O formulário também funciona por envio convencional sem JavaScript.
+
+Notas que você pode consultar também podem ser copiadas ou baixadas em `.txt` UTF-8. Listas usam `[x]` e `[ ]` para indicar conclusão. Se a cópia para a área de transferência falhar, o aplicativo recorre ao download.
+
+### Lembretes
+
+Cada conta pode ter um lembrete pessoal por nota acessível. O horário usa o fuso do perfil, inicialmente `America/Sao_Paulo`, e é armazenado em UTC.
+
+Arquivar mantém o lembrete. Enviar a nota à lixeira o suspende; restaurar reativa apenas agendamentos futuros. Horários vencidos precisam ser reagendados. Revogar o acesso ou excluir definitivamente impede novos envios para aquela nota.
+
+Os serviços `queue` e `scheduler` executam a fila e verificam os horários. O comando `lembretes:processar` roda a cada minuto. Para iniciar esses serviços separadamente:
+
+```bash
+./vendor/bin/sail up -d queue scheduler
+```
+
+### Compartilhamento
+
+Os convites usam o e-mail de uma conta cadastrada. O acesso começa após a aceitação; não existe um diretório público de usuários.
+
+| Papel | Permissões |
+| --- | --- |
+| Proprietário | Editar conteúdo e aparência, gerenciar participantes e todas as ações da nota |
+| Editor | Consultar e editar título, descrição, itens e aparência |
+| Leitor | Consultar, copiar e baixar |
+
+Somente o proprietário pode fixar, arquivar, enviar à lixeira, restaurar ou excluir. Etiquetas e lembretes continuam pessoais. Na lixeira, uma nota compartilhada fica visível apenas para o proprietário.
+
+O aplicativo compara revisões antes de salvar. Se outra pessoa já alterou a nota, apresenta um conflito para que você compare as versões e decida como continuar.
+
+### Uso offline
+
+Após o primeiro login com conexão, você pode consultar notas disponibilizadas no dispositivo, criar notas e editar conteúdo ou aparência offline. Compartilhamento, lembretes, etiquetas, ações em lote e operações destrutivas precisam de conexão.
+
+As alterações pendentes são sincronizadas na reconexão. Repetir uma operação cuja resposta se perdeu não duplica a nota nem reaplica a alteração. Conflitos exigem uma decisão, e o servidor confere novamente as permissões antes de aceitar mudanças.
+
+Os dados locais são separados por conta. Sair com alterações pendentes exige confirmação; a troca de conta remove os dados anteriores e informa quando pendências foram descartadas. Sair offline não encerra a sessão que ainda existe no servidor.
+
+O armazenamento do navegador pode ser removido pelo usuário ou pelo sistema. Revogar o acesso não apaga imediatamente uma cópia em um dispositivo desconectado. O modo offline não substitui um backup.
+
+## Segurança
+
+O proprietário é definido pela sessão autenticada, e as permissões são verificadas no servidor. Enviar outro `usuario_id` não permite transferir a nota ou acessar dados de outra conta.
+
+Os formulários usam proteção CSRF, e o conteúdo das notas é exibido como texto escapado. A busca respeita os filtros de acesso e seção. Caminhos de imagem e CSS arbitrários não são aceitos.
+
+## Testes
+
+```bash
 ./vendor/bin/sail artisan test
 ./vendor/bin/sail bin pint --test
 ./vendor/bin/sail composer validate --strict
 ./vendor/bin/sail composer check-platform-reqs
-./vendor/bin/sail down
+./vendor/bin/sail npm run build
 ```
 
-Não use `down -v` se quiser preservar os dados.
+O PHPUnit usa SQLite em memória. Para testes de navegador que criem contas ou alterem notas, use os ambientes descartáveis abaixo.
 
-## Verificação segura no navegador
+### Navegador com banco isolado
 
-O navegador não deve ser iniciado com `artisan serve` para esta verificação. Esse comando cria um processo filho e permitiu que a validação do CLI divergisse da conexão usada pelas requisições HTTP. O procedimento reproduzível usa `php -S` diretamente, SQLite e caches exclusivos em `/tmp/notas-verificacao/<execução>`.
+Os scripts iniciam um servidor separado e conferem sua conexão por HTTP antes das migrations ou da criação de dados. Não use o banco principal para esses testes.
 
 ```bash
-cd /home/dr_4_/clone_google_keep
 ./tests/e2e/testar-aborto-isolamento.sh
-./tests/e2e/iniciar-isolado.sh etapa7 8006
-# execute o roteiro somente depois de ISOLAMENTO CONFIRMADO
-./tests/e2e/parar-isolado.sh etapa7
+./tests/e2e/iniciar-isolado.sh verificacao_visual 8006
 
-# MySQL descartável para transações e concorrência
+# Execute um roteiro por vez, depois da confirmação de isolamento
+python3 ./tests/e2e/verificar-expansoes.py http://127.0.0.1:8006 /verificacao/notas.sqlite
+python3 ./tests/e2e/verificar-aviso.py http://127.0.0.1:8006 /verificacao/notas.sqlite
+python3 ./tests/e2e/verificar-select.py http://127.0.0.1:8006 /verificacao/notas.sqlite
+
+./tests/e2e/parar-isolado.sh verificacao_visual
+```
+
+Os roteiros usam Python 3 e Google Chrome em `/usr/bin/google-chrome`. Execute-os no Linux ou WSL onde essas ferramentas estiverem disponíveis. As capturas são gravadas em `docs/capturas/`.
+
+O servidor usa `php -S` diretamente, evitando diferenças de configuração entre o processo inicial e um processo filho de `artisan serve`. Banco, cookies e caches são exclusivos da execução, com arquivos temporários em `/tmp/notas-verificacao/<execução>`.
+
+O preflight exige ambiente `testing`, driver `sqlite`, banco `/verificacao/notas.sqlite`, sessão `cookie`, cache `array` e configuração em cache ativa. Qualquer divergência interrompe a execução. A rota `/_diagnostico/ambiente-verificacao` só existe em testes e responde 404 na aplicação normal.
+
+O teste de aborto usa um servidor falso com configuração incompatível, sem acessar o MySQL principal. Iniciar novamente com o mesmo identificador recria o ambiente descartável; use nomes diferentes para manter execuções separadas.
+
+### MySQL descartável
+
+Para verificar transações e concorrência no MySQL 8.4:
+
+```bash
 ./tests/e2e/iniciar-mysql-isolado.sh expansoes_mysql 8007
 ./tests/e2e/testar-mysql-isolado.sh expansoes_mysql
 python3 ./tests/e2e/verificar-concorrencia-mysql.py http://127.0.0.1:8007 notas_verificacao_expansoes_mysql ./tests/e2e/preflight-mysql-isolamento.sh
 ./tests/e2e/parar-mysql-isolado.sh expansoes_mysql
 ```
 
-`iniciar-isolado.sh` cria uma configuração em cache própria, inicia o processo HTTP e chama `preflight-isolamento.sh` antes das migrations. O preflight consulta `/_diagnostico/ambiente-verificacao` no próprio servidor e exige `testing`, driver `sqlite`, arquivo `/verificacao/notas.sqlite`, sessão `cookie`, cache `array` e configuração em cache ativa. Qualquer divergência termina com erro antes de migrations, cadastro ou seed.
+Esses scripts também exigem confirmação HTTP do isolamento antes das gravações.
 
-A rota de diagnóstico só é registrada em `testing`; na aplicação normal ela responde 404. O cookie também recebe nome exclusivo por execução. `testar-aborto-isolamento.sh` usa um servidor falso incompatível e comprova o aborto sem acessar o MySQL principal.
-## Recuperação de senha
+## Capturas
 
-Cadastre uma conta, saia, clique em **Esqueci minha senha**, informe o e-mail e abra http://localhost:8026. Use o link recebido para definir uma nova senha. O link expira em 60 minutos e o envio é síncrono.
+As imagens usam contas e notas fictícias em ambientes descartáveis.
 
-## Versões instaladas
+| Tela ou estado | Captura |
+| --- | --- |
+| Notas no celular | [Ver imagem](docs/capturas/expansoes-notas-celular.png) |
+| Filtros em 320 px | [Ver imagem](docs/capturas/padronizacao-filtros-320.png) |
+| Editor de lista | [Ver imagem](docs/capturas/padronizacao-lista-390.png) |
+| Mais ações | [Ver imagem](docs/capturas/padronizacao-mais-acoes-390.png) |
+| Arquivadas vazia | [Ver imagem](docs/capturas/padronizacao-arquivadas-vazia-390.png) |
+| Lixeira vazia | [Ver imagem](docs/capturas/padronizacao-lixeira-vazia-390.png) |
+| Compartilhamentos no desktop | [Ver imagem](docs/capturas/padronizacao-compartilhamentos-desktop.png) |
+| Compartilhamentos em 320 px | [Ver imagem](docs/capturas/padronizacao-compartilhamentos-320.png) |
+| Lembretes no desktop | [Ver imagem](docs/capturas/expansoes-lembretes-desktop.png) |
+| Lembretes sem agendamentos | [Ver imagem](docs/capturas/padronizacao-lembretes-vazio-390.png) |
+| Aviso após criar uma nota | [Ver imagem](docs/capturas/padronizacao-aviso-1440.png) |
+| Select de tipo | [Ver imagem](docs/capturas/padronizacao-select-390.png) |
+| Criação e edição offline | [Ver imagem](docs/capturas/expansoes-offline-celular.png) |
 
-Verificadas em 21/09/2026:
+## Versões de referência
+
+Ambiente registrado em 21/09/2026:
 
 | Componente | Versão |
 | --- | --- |
@@ -242,37 +252,8 @@ Verificadas em 21/09/2026:
 | Mailpit | 1.31.2 |
 | Docker Engine | 29.8.0 |
 
-As versões exatas estão em `composer.lock` e `package-lock.json`.
+As versões das dependências PHP e JavaScript estão fixadas em `composer.lock` e `package-lock.json`.
 
+## Licenças e documentação
 
-## Verificações desta rodada
-
-- 104 testes PHP e 598 asserções aprovados em SQLite `:memory:`.
-- As 11 regressões novas e 114 asserções também passaram no MySQL 8.4 descartável em tmpfs.
-- Duas gravações HTTP concorrentes da mesma revisão no MySQL produziram 200 e 409; a revisão avançou uma única vez, de 1 para 2.
-- A atualização incremental foi provada em SQLite e MySQL a partir do esquema anterior com uma nota existente: ID e conteúdo foram preservados, `tipo_conteudo=texto`, `revisao=1` e UUID preenchido.
-- O preflight HTTP confirmou ambiente, driver, arquivo ou schema, sessão, cache e config cache antes de cada mutação isolada. A prova negativa recusou MySQL inesperado antes de gravar.
-- O roteiro CDP local confirmou desktop, 390 x 844 sem rolagem horizontal, criação online, criação e edição offline de texto/lista, item concluído, recarga, reconexão e sincronização.
-- O Mailpit recebeu um lembrete real para endereço fictício `@example.test`.
-- Pint, build do Vite, validação estrita do Composer e requisitos de plataforma foram aprovados.
-
-| Estado | Captura |
-| --- | --- |
-| Notas e ações - desktop | [captura](docs/capturas/expansoes-notas-desktop.png) |
-| Notas - celular | [captura](docs/capturas/expansoes-notas-celular.png) |
-| Cartão com Mais ações e lembrete - desktop | [captura](docs/capturas/padronizacao-cartao-acoes-desktop.png) |
-| Filtros e etiquetas - 320 px | [captura](docs/capturas/padronizacao-filtros-320.png) |
-| Arquivadas vazia - 390 px | [captura](docs/capturas/padronizacao-arquivadas-vazia-390.png) |
-| Lixeira vazia - 390 px | [captura](docs/capturas/padronizacao-lixeira-vazia-390.png) |
-| Compartilhamentos - desktop | [captura](docs/capturas/padronizacao-compartilhamentos-desktop.png) |
-| Compartilhamentos - 320 px | [captura](docs/capturas/padronizacao-compartilhamentos-320.png) |
-| Lembretes - desktop | [captura](docs/capturas/expansoes-lembretes-desktop.png) |
-| Criação e edição offline - celular | [captura](docs/capturas/expansoes-offline-celular.png) |
-
-As capturas e contas fictícias foram produzidas somente depois do preflight HTTP, no SQLite descartável.
-
-## Git e atribuições
-
-Repositório independente em `main`, publicado em `MatheusRyuki/notas-laravel`. A rodada de padronização visual está registrada em commits locais; a publicação dessas alterações é uma etapa separada. Nenhuma dependência ou arquivo exclusivo de agentes foi adicionada.
-
-Consulte [licenças e atribuições](docs/atribuicoes.md).
+Consulte as [licenças e atribuições](docs/atribuicoes.md) das ferramentas utilizadas e a [documentação do modelo de dados](docs/modelo-nota.md).
