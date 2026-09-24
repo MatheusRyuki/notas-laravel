@@ -1,5 +1,7 @@
 # Notas
 
+[![Qualidade](https://github.com/MatheusRyuki/notas-laravel/actions/workflows/qualidade.yml/badge.svg?branch=main)](https://github.com/MatheusRyuki/notas-laravel/actions/workflows/qualidade.yml)
+
 Aplicativo de notas desenvolvido como projeto de estudo em Laravel. Organize textos e listas, compartilhe notas e continue escrevendo mesmo sem conexão.
 
 A interface está em português, com Blade, Alpine.js e Tailwind CSS. O visual e os fundos SVG são próprios, inspirados no Google Keep.
@@ -174,6 +176,16 @@ Os formulários usam proteção CSRF, e o conteúdo das notas é exibido como te
 ```
 
 O PHPUnit usa SQLite em memória. Para testes de navegador que criem contas ou alterem notas, use os ambientes descartáveis abaixo.
+
+### Integração contínua
+
+O workflow **Qualidade** executa em pushes para `main`, pull requests destinados a `main` e acionamento manual. Os jobs PHP e Frontend são independentes, em Ubuntu com PHP 8.5, Composer 2 e Node.js 24.
+
+O job PHP executa `composer validate --strict`, `composer install`, `composer check-platform-reqs`, `php vendor/bin/pint --test` e `php vendor/bin/phpunit`. Ele também compila os assets com `npm ci` e `npm run build`, pois os testes renderizam views Blade que usam o manifest do Vite. O job Frontend verifica esses dois comandos separadamente.
+
+Antes da suíte, um servidor temporário confirma por HTTP ambiente `testing`, SQLite `:memory:`, sessão/cache em `array` e ausência de configuração em cache. Fila síncrona e correio em `array` são conferidos no bootstrap do Laravel. Qualquer divergência interrompe a execução antes dos testes.
+
+O CI não usa MySQL, credenciais pessoais ou serviços locais. O cache guarda somente downloads de dependências. Testes de navegador, concorrência MySQL e implantação não fazem parte deste workflow.
 
 ### Navegador com banco isolado
 
