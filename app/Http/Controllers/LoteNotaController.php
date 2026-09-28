@@ -52,45 +52,16 @@ class LoteNotaController extends Controller
 
             $itensDesfazer = [];
             foreach ($notas as $nota) {
-                if ($dados['acao'] === 'arquivar' || $dados['acao'] === 'desarquivar') {
-                    $itensDesfazer[] = [
-                        'nota_id' => $nota->id,
-                        'arquivada_anterior' => $nota->arquivada,
-                    ];
-                    $nota->arquivada = $dados['acao'] === 'arquivar';
-                    $nota->avancarRevisao();
-                    $nota->save();
-                    $itensDesfazer[array_key_last($itensDesfazer)]['revisao_esperada'] = $nota->revisao;
-                } elseif ($dados['acao'] === 'lixeira') {
-                    $nota->avancarRevisao();
-                    $nota->save();
-                    $nota->lembretes()->update(['ativo' => false, 'suspenso_lixeira' => true]);
-                    $nota->delete();
-                    $itensDesfazer[] = ['nota_id' => $nota->id, 'revisao_esperada' => $nota->revisao];
-                } elseif ($dados['acao'] === 'restaurar') {
-                    $nota->restaurarComLembretes();
-                } else {
-                    $existe = DB::table('etiqueta_nota')
-                        ->where('usuario_id', $request->user()->id)
-                        ->where('nota_id', $nota->id)
-                        ->where('etiqueta_id', $etiqueta->id)
-                        ->exists();
-                    if ($dados['acao'] === 'aplicar_etiqueta' && ! $existe) {
-                        DB::table('etiqueta_nota')->insert([
-                            'usuario_id' => $request->user()->id,
-                            'nota_id' => $nota->id,
-                            'etiqueta_id' => $etiqueta->id,
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
-                    }
-                    if ($dados['acao'] === 'remover_etiqueta') {
-                        DB::table('etiqueta_nota')
-                            ->where('usuario_id', $request->user()->id)
-                            ->where('nota_id', $nota->id)
-                            ->where('etiqueta_id', $etiqueta->id)
-                            ->delete();
-                    }
+                $itemDesfazer = match ($dados['acao']) {
+                    'arquivar' => $this->arquivar($nota),
+                    'desarquivar' => $this->desarquivar($nota),
+                    'lixeira' => $this->moverLixeira($nota),
+                    'restaurar' => $this->restaurar($nota),
+                    'aplicar_etiqueta' => $this->aplicarEtiqueta($nota, $etiqueta, $request->user()->id),
+                    'remover_etiqueta' => $this->removerEtiqueta($nota, $etiqueta, $request->user()->id),
+                };
+                if ($itemDesfazer !== null) {
+                    $itensDesfazer[] = $itemDesfazer;
                 }
             }
 
@@ -113,6 +84,78 @@ class LoteNotaController extends Controller
         }
 
         return $resposta;
+    }
+
+    private function arquivar(Nota $nota): array
+    {
+        return $this->alterarArquivamento($nota, true);
+    }
+
+    private function desarquivar(Nota $nota): array
+    {
+        return $this->alterarArquivamento($nota, false);
+    }
+
+    private function alterarArquivamento(Nota $nota, bool $arquivada): array
+    {
+        $anterior = $nota->arquivada;
+        $nota->arquivada = $arquivada;
+        $nota->avancarRevisao();
+        $nota->save();
+
+        return [
+            'nota_id' => $nota->id,
+            'arquivada_anterior' => $anterior,
+            'revisao_esperada' => $nota->revisao,
+        ];
+    }
+
+    private function moverLixeira(Nota $nota): array
+    {
+        $nota->avancarRevisao();
+        $nota->save();
+        $nota->lembretes()->update(['ativo' => false, 'suspenso_lixeira' => true]);
+        $nota->delete();
+
+        return ['nota_id' => $nota->id, 'revisao_esperada' => $nota->revisao];
+    }
+
+    private function restaurar(Nota $nota): null
+    {
+        $nota->restaurarComLembretes();
+
+        return null;
+    }
+
+    private function aplicarEtiqueta(Nota $nota, Etiqueta $etiqueta, int $usuarioId): null
+    {
+        $existe = DB::table('etiqueta_nota')
+            ->where('usuario_id', $usuarioId)
+            ->where('nota_id', $nota->id)
+            ->where('etiqueta_id', $etiqueta->id)
+            ->exists();
+        if (! $existe) {
+            DB::table('etiqueta_nota')->insert([
+                'usuario_id' => $usuarioId,
+                'nota_id' => $nota->id,
+                'etiqueta_id' => $etiqueta->id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        return null;
+    }
+
+    private function removerEtiqueta(Nota $nota, Etiqueta $etiqueta, int $usuarioId): null
+    {
+        DB::table('etiqueta_nota')
+            ->where('usuario_id', $usuarioId)
+            ->where('nota_id', $nota->id)
+            ->where('etiqueta_id', $etiqueta->id)
+            ->delete();
+
+        return null;
     }
 
     private function validarEstadoEPermissao(Request $request, Nota $nota, string $acao): void
