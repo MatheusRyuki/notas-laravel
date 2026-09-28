@@ -56,4 +56,39 @@ class IdentidadeItensNotaTest extends TestCase
         $this->assertSame($ids, $nota->itens()->pluck('id')->all());
         $this->assertSame('Privado', $alheio->fresh()->texto);
     }
+
+    public function test_sync_nao_reaproveita_item_de_outra_nota(): void
+    {
+        $usuario = User::factory()->create();
+        $notaA = $usuario->notas()->create(['titulo' => 'Nota A', 'tipo_conteudo' => 'lista']);
+        $notaB = $usuario->notas()->create(['titulo' => 'Nota B', 'tipo_conteudo' => 'lista']);
+        $itemB = $notaB->itens()->create(['texto' => 'Original de B', 'concluido' => false, 'posicao' => 0]);
+
+        $resposta = $this->actingAs($usuario)->postJson(route('sincronizacao.executar'), [
+            'conta_id' => $usuario->id,
+            'operacoes' => [[
+                'uuid' => (string) Str::uuid(),
+                'acao' => 'atualizar',
+                'nota_uuid' => $notaA->uuid_sincronizacao,
+                'revisao_base' => $notaA->revisao,
+                'payload' => [
+                    'titulo' => 'Nota A',
+                    'tipo_conteudo' => 'lista',
+                    'tipo_aparencia' => 'cor',
+                    'cor' => 'padrao',
+                    'itens' => [['id' => $itemB->id, 'texto' => 'Novo de A', 'concluido' => true]],
+                ],
+            ]],
+        ])->assertOk()->assertJsonPath('resultados.0.status', 'sincronizado');
+
+        $itemA = $notaA->itens()->sole();
+        $this->assertNotSame($itemB->id, $itemA->id);
+        $this->assertSame($notaA->id, $itemA->nota_id);
+        $this->assertSame('Novo de A', $itemA->texto);
+        $resposta->assertJsonPath('resultados.0.nota.itens.0.id', $itemA->id);
+        $itemB->refresh();
+        $this->assertSame('Original de B', $itemB->texto);
+        $this->assertSame($notaB->id, $itemB->nota_id);
+        $this->assertFalse($itemB->concluido);
+    }
 }
