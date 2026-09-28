@@ -114,13 +114,7 @@ class LixeiraController extends Controller
 
         DB::transaction(function () use ($registro): void {
             $atual = Nota::onlyTrashed()->whereKey($registro->id)->lockForUpdate()->firstOrFail();
-            $atual->revisao++;
-            $atual->restore();
-            $atual->lembretes()->each(function ($lembrete): void {
-                if ($lembrete->agendado_em->isFuture()) {
-                    $lembrete->forceFill(['ativo' => true, 'suspenso_lixeira' => false])->save();
-                }
-            });
+            $atual->restaurarComLembretes();
         });
 
         return redirect()->route('lixeira.index', $this->consultaRetorno($request))

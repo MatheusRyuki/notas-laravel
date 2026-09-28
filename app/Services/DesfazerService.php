@@ -65,13 +65,7 @@ class DesfazerService
                     if (! $nota->trashed()) {
                         throw ValidationException::withMessages(['desfazer' => 'Não foi possível desfazer porque a nota já foi restaurada.']);
                     }
-                    $nota->revisao++;
-                    $nota->restore();
-                    $nota->lembretes()->each(function ($lembrete): void {
-                        if ($lembrete->agendado_em->isFuture()) {
-                            $lembrete->forceFill(['ativo' => true, 'suspenso_lixeira' => false])->save();
-                        }
-                    });
+                    $nota->restaurarComLembretes();
                 } else {
                     throw ValidationException::withMessages(['desfazer' => 'Esta operação não pode ser desfeita.']);
                 }

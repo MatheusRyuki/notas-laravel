@@ -67,13 +67,7 @@ class LoteNotaController extends Controller
                     $nota->delete();
                     $itensDesfazer[] = ['nota_id' => $nota->id, 'revisao_esperada' => $nota->revisao];
                 } elseif ($dados['acao'] === 'restaurar') {
-                    $nota->revisao++;
-                    $nota->restore();
-                    $nota->lembretes()->each(function ($lembrete): void {
-                        if ($lembrete->agendado_em->isFuture()) {
-                            $lembrete->forceFill(['ativo' => true, 'suspenso_lixeira' => false])->save();
-                        }
-                    });
+                    $nota->restaurarComLembretes();
                 } else {
                     $existe = DB::table('etiqueta_nota')
                         ->where('usuario_id', $request->user()->id)

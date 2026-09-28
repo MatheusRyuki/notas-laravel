@@ -112,6 +112,17 @@ class Nota extends Model
         });
     }
 
+    public function restaurarComLembretes(): void
+    {
+        $this->avancarRevisao();
+        $this->restore();
+        $this->lembretes()->each(function (Lembrete $lembrete): void {
+            if ($lembrete->agendado_em->isFuture()) {
+                $lembrete->forceFill(['ativo' => true, 'suspenso_lixeira' => false])->save();
+            }
+        });
+    }
+
     public function avancarRevisao(): void
     {
         $this->revisao++;
