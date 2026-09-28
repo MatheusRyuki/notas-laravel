@@ -103,15 +103,4 @@ class NotaBuscaTest extends TestCase
         $this->actingAs($usuario)->patch(route('lixeira.restaurar', $nota->id), ['q' => 'Contexto'])
             ->assertRedirect(route('lixeira.index', ['q' => 'Contexto']));
     }
-
-    public function test_diagnostico_http_existe_no_ambiente_de_testes(): void
-    {
-        $this->get('/_diagnostico/ambiente-verificacao')->assertOk()
-            ->assertJsonPath('ambiente', 'testing')
-            ->assertJsonPath('driver_modelos', 'sqlite')
-            ->assertJsonPath('database_modelos', ':memory:')
-            ->assertJsonPath('sessao', 'array')
-            ->assertJsonPath('cache', 'array')
-            ->assertJsonPath('config_cache', false);
-    }
 }

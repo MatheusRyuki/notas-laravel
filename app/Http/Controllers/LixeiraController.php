@@ -6,6 +6,7 @@ use App\Enums\CorNota;
 use App\Http\Requests\BuscarNotasRequest;
 use App\Models\Nota;
 use App\Support\BuscaNotas;
+use App\Support\ConsultaRetorno;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -102,7 +103,7 @@ class LixeiraController extends Controller
 
         return view('lixeira.confirmar-exclusao', [
             'nota' => $registro,
-            'consulta' => $this->consultaRetorno($request),
+            'consulta' => ConsultaRetorno::consultaRetorno($request),
         ]);
     }
 
@@ -114,16 +115,10 @@ class LixeiraController extends Controller
 
         DB::transaction(function () use ($registro): void {
             $atual = Nota::onlyTrashed()->whereKey($registro->id)->lockForUpdate()->firstOrFail();
-            $atual->revisao++;
-            $atual->restore();
-            $atual->lembretes()->each(function ($lembrete): void {
-                if ($lembrete->agendado_em->isFuture()) {
-                    $lembrete->forceFill(['ativo' => true, 'suspenso_lixeira' => false])->save();
-                }
-            });
+            $atual->restaurarComLembretes();
         });
 
-        return redirect()->route('lixeira.index', $this->consultaRetorno($request))
+        return redirect()->route('lixeira.index', ConsultaRetorno::consultaRetorno($request))
             ->with('sucesso', "Nota restaurada para {$destino}.");
     }
 
@@ -133,7 +128,7 @@ class LixeiraController extends Controller
         Gate::authorize('forceDelete', $registro);
         $registro->forceDelete();
 
-        return redirect()->route('lixeira.index', $this->consultaRetorno($request))
+        return redirect()->route('lixeira.index', ConsultaRetorno::consultaRetorno($request))
             ->with('sucesso', 'Nota excluída definitivamente.');
     }
 
@@ -154,12 +149,5 @@ class LixeiraController extends Controller
         }
 
         return $validas;
-    }
-
-    private function consultaRetorno(Request $request): array
-    {
-        return collect($request->only(['q', 'ordem', 'etiquetas']))
-            ->reject(fn ($valor) => $valor === null || $valor === '' || $valor === [])
-            ->all();
     }
 }

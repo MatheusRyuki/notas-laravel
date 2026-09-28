@@ -3,9 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Enums\CorNota;
-use App\Enums\FundoNota;
-use App\Enums\TipoAparencia;
-use App\Enums\TipoNota;
 use App\Http\Requests\ArquivarNotaRequest;
 use App\Http\Requests\BuscarNotasRequest;
 use App\Http\Requests\FixarNotaRequest;
@@ -13,7 +10,9 @@ use App\Http\Requests\StoreNotaRequest;
 use App\Http\Requests\UpdateNotaRequest;
 use App\Models\Nota;
 use App\Services\DesfazerService;
+use App\Services\NotaPayloadService;
 use App\Support\BuscaNotas;
+use App\Support\ConsultaRetorno;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -35,17 +34,15 @@ class NotaController extends Controller
         return $this->listagem($request, true);
     }
 
-    public function store(StoreNotaRequest $request): RedirectResponse
+    public function store(StoreNotaRequest $request, NotaPayloadService $payloads): RedirectResponse
     {
-        DB::transaction(function () use ($request): void {
+        DB::transaction(function () use ($request, $payloads): void {
             $nota = new Nota;
-            $nota->fill($request->safe()->only(['titulo', 'descricao', 'tipo_conteudo']));
-            $this->aplicarAparencia($nota, $request->validated());
-            $request->user()->notas()->save($nota);
-            $this->salvarItens($nota, $request->validated('itens', []));
+            $nota->usuario()->associate($request->user());
+            $payloads->aplicar($nota, $request->validated());
         });
 
-        return redirect()->route('notas.inicio', $this->consultaRetorno($request))
+        return redirect()->route('notas.inicio', ConsultaRetorno::consultaRetorno($request))
             ->with('sucesso', 'Nota criada com sucesso.');
     }
 
@@ -57,11 +54,11 @@ class NotaController extends Controller
         return response()->json($this->representarNota($nota, $request));
     }
 
-    public function update(UpdateNotaRequest $request, Nota $nota): JsonResponse
+    public function update(UpdateNotaRequest $request, Nota $nota, NotaPayloadService $payloads): JsonResponse
     {
         $dados = $request->validated();
 
-        $resultado = DB::transaction(function () use ($request, $nota, $dados): Nota|JsonResponse {
+        $resultado = DB::transaction(function () use ($request, $nota, $dados, $payloads): Nota|JsonResponse {
             $atual = Nota::query()->whereKey($nota->id)->lockForUpdate()->firstOrFail();
             Gate::authorize('update', $atual);
 
@@ -77,11 +74,7 @@ class NotaController extends Controller
                 ], 409);
             }
 
-            $atual->fill($request->safe()->only(['titulo', 'descricao']));
-            if (array_key_exists('tipo_aparencia', $dados)) {
-                $this->aplicarAparencia($atual, $dados);
-            }
-            $this->salvarItens($atual, $dados['itens'] ?? []);
+            $payloads->aplicar($atual, $dados);
             $atual->avancarRevisao();
             $atual->save();
 
@@ -116,7 +109,7 @@ class NotaController extends Controller
             }
         }, 3);
 
-        return redirect()->route('notas.inicio', $this->consultaRetorno($request))
+        return redirect()->route('notas.inicio', ConsultaRetorno::consultaRetorno($request))
             ->with('sucesso', $desejado ? 'Nota fixada com sucesso.' : 'Nota desafixada com sucesso.');
     }
 
@@ -144,14 +137,14 @@ class NotaController extends Controller
                 'revisao_esperada' => $atual->revisao,
             ]], [
                 'rota' => $desejado ? 'notas.inicio' : 'notas.arquivadas',
-                'consulta' => $this->consultaRetorno($request),
+                'consulta' => ConsultaRetorno::consultaRetorno($request),
             ]);
         });
 
         $rota = $desejado ? 'notas.inicio' : 'notas.arquivadas';
         $mensagem = $desejado ? 'Nota arquivada com sucesso.' : 'Nota desarquivada com sucesso.';
 
-        $resposta = redirect()->route($rota, $this->consultaRetorno($request))->with('sucesso', $mensagem);
+        $resposta = redirect()->route($rota, ConsultaRetorno::consultaRetorno($request))->with('sucesso', $mensagem);
         if ($operacao) {
             $resposta->with('desfazer', $operacao->token);
         }
@@ -176,11 +169,11 @@ class NotaController extends Controller
                 'revisao_esperada' => $atual->revisao,
             ]], [
                 'rota' => $rotaRetorno,
-                'consulta' => $this->consultaRetorno($request),
+                'consulta' => ConsultaRetorno::consultaRetorno($request),
             ]);
         });
 
-        return redirect()->route($rotaRetorno, $this->consultaRetorno($request))
+        return redirect()->route($rotaRetorno, ConsultaRetorno::consultaRetorno($request))
             ->with('sucesso', 'Nota movida para a lixeira.')
             ->with('desfazer', $operacao->token);
     }
@@ -199,6 +192,7 @@ class NotaController extends Controller
             ->with([
                 'itens',
                 'usuario:id,name',
+                'participantes' => fn ($q) => $q->whereKey($request->user()->id),
                 'etiquetas' => fn ($q) => $q->where('etiqueta_nota.usuario_id', $request->user()->id),
             ]);
 
@@ -265,58 +259,6 @@ class NotaController extends Controller
         }
 
         return $validas;
-    }
-
-    private function consultaRetorno(Request $request): array
-    {
-        return collect($request->only(['q', 'ordem', 'etiquetas']))
-            ->reject(fn ($valor) => $valor === null || $valor === '' || $valor === [])
-            ->all();
-    }
-
-    private function aplicarAparencia(Nota $nota, array $dados): void
-    {
-        $tipo = TipoAparencia::from($dados['tipo_aparencia']);
-        if ($tipo === TipoAparencia::Imagem) {
-            $fundo = FundoNota::from($dados['fundo']);
-            $nota->forceFill(['tipo_aparencia' => $tipo, 'cor' => null, 'caminho_imagem' => $fundo->caminho()]);
-
-            return;
-        }
-
-        $cor = CorNota::from($dados['cor']);
-        $nota->forceFill([
-            'tipo_aparencia' => TipoAparencia::Cor,
-            'cor' => $cor === CorNota::Padrao ? null : $cor,
-            'caminho_imagem' => null,
-        ]);
-    }
-
-    private function salvarItens(Nota $nota, array $itens): void
-    {
-        if ($nota->tipo_conteudo !== TipoNota::Lista) {
-            $nota->itens()->delete();
-
-            return;
-        }
-
-        $nota->itens()->update(['posicao' => DB::raw('posicao + 1000')]);
-        $idsMantidos = [];
-        foreach (array_values($itens) as $posicao => $dados) {
-            $item = isset($dados['id'])
-                ? $nota->itens()->whereKey($dados['id'])->first()
-                : null;
-            $item ??= $nota->itens()->make();
-            $item->fill([
-                'texto' => $dados['texto'],
-                'concluido' => (bool) ($dados['concluido'] ?? false),
-                'posicao' => $posicao,
-            ]);
-            $item->save();
-            $idsMantidos[] = $item->id;
-        }
-
-        $nota->itens()->whereNotIn('id', $idsMantidos)->delete();
     }
 
     private function representarNota(Nota $nota, Request $request): array

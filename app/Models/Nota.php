@@ -91,9 +91,9 @@ class Nota extends Model
             return null;
         }
 
-        $papel = $this->participantes()
-            ->whereKey($usuario->id)
-            ->value('nota_participantes.papel');
+        $papel = $this->relationLoaded('participantes')
+            ? $this->participantes->firstWhere('id', $usuario->id)?->pivot->papel
+            : $this->participantes()->whereKey($usuario->id)->value('nota_participantes.papel');
 
         return $papel ? PapelNota::from($papel) : null;
     }
@@ -109,6 +109,17 @@ class Nota extends Model
         return $query->where(function (Builder $acesso) use ($usuario): void {
             $acesso->where('usuario_id', $usuario->id)
                 ->orWhereHas('participantes', fn (Builder $participantes) => $participantes->whereKey($usuario->id));
+        });
+    }
+
+    public function restaurarComLembretes(): void
+    {
+        $this->avancarRevisao();
+        $this->restore();
+        $this->lembretes()->each(function (Lembrete $lembrete): void {
+            if ($lembrete->agendado_em->isFuture()) {
+                $lembrete->forceFill(['ativo' => true, 'suspenso_lixeira' => false])->save();
+            }
         });
     }
 

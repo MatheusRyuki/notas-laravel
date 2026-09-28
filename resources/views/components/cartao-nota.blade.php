@@ -7,7 +7,7 @@ $classeAparencia = $fundo ? 'aparencia-imagem' : 'cor-nota--'.$cor;
 $identificacao = $nota->titulo ?: \Illuminate\Support\Str::limit($nota->descricao ?: 'sem título', 45);
 $proprietaria = $nota->usuario_id === auth()->id();
 $papel = $proprietaria ? 'Proprietário' : ($nota->papelDe(auth()->user())?->rotulo() ?? 'Sem acesso');
-$consulta = collect(request()->only(['q', 'ordem', 'etiquetas']))->reject(fn ($valor) => $valor === null || $valor === '' || $valor === [])->all();
+$consulta = \App\Support\ConsultaRetorno::consultaRetorno(request());
 $etiquetasAtuais = $nota->relationLoaded('etiquetas') ? $nota->etiquetas->pluck('id')->all() : [];
 @endphp
 
