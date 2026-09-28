@@ -6,7 +6,7 @@ Aplicativo de notas desenvolvido como projeto de estudo em Laravel. Organize tex
 
 A interface está em português, com Blade, Alpine.js e Tailwind CSS. O visual e os fundos SVG são próprios, inspirados no Google Keep.
 
-![Tela de notas](docs/capturas/expansoes-notas-desktop.png)
+![Tela de notas](docs/capturas/inicio-desktop.png)
 
 ## Funcionalidades
 
@@ -175,7 +175,7 @@ Os formulários usam proteção CSRF, e o conteúdo das notas é exibido como te
 ./vendor/bin/sail npm run build
 ```
 
-O PHPUnit usa SQLite em memória. Para testes de navegador que criem contas ou alterem notas, use os ambientes descartáveis abaixo.
+O PHPUnit usa SQLite em memória.
 
 ### Integração contínua
 
@@ -183,89 +183,8 @@ O workflow **Qualidade** executa em pushes para `main`, pull requests destinados
 
 O job PHP executa `composer validate --strict`, `composer install`, `composer check-platform-reqs`, `php vendor/bin/pint --test` e `php vendor/bin/phpunit`. Ele também compila os assets com `npm ci` e `npm run build`, pois os testes renderizam views Blade que usam o manifest do Vite. O job Frontend verifica esses dois comandos separadamente.
 
-Antes da suíte, um servidor temporário confirma por HTTP ambiente `testing`, SQLite `:memory:`, sessão/cache em `array` e ausência de configuração em cache. Fila síncrona e correio em `array` são conferidos no bootstrap do Laravel. Qualquer divergência interrompe a execução antes dos testes.
-
 O CI não usa MySQL, credenciais pessoais ou serviços locais. O cache guarda somente downloads de dependências. Testes de navegador, concorrência MySQL e implantação não fazem parte deste workflow.
-
-### Navegador com banco isolado
-
-Os scripts iniciam um servidor separado e conferem sua conexão por HTTP antes das migrations ou da criação de dados. Não use o banco principal para esses testes.
-
-```bash
-./tests/e2e/testar-aborto-isolamento.sh
-./tests/e2e/iniciar-isolado.sh verificacao_visual 8006
-
-# Execute um roteiro por vez, depois da confirmação de isolamento
-python3 ./tests/e2e/verificar-expansoes.py http://127.0.0.1:8006 /verificacao/notas.sqlite
-python3 ./tests/e2e/verificar-aviso.py http://127.0.0.1:8006 /verificacao/notas.sqlite
-python3 ./tests/e2e/verificar-select.py http://127.0.0.1:8006 /verificacao/notas.sqlite
-
-./tests/e2e/parar-isolado.sh verificacao_visual
-```
-
-Os roteiros usam Python 3 e Google Chrome em `/usr/bin/google-chrome`. Execute-os no Linux ou WSL onde essas ferramentas estiverem disponíveis. As capturas são gravadas em `docs/capturas/`.
-
-O servidor usa `php -S` diretamente, evitando diferenças de configuração entre o processo inicial e um processo filho de `artisan serve`. Banco, cookies e caches são exclusivos da execução, com arquivos temporários em `/tmp/notas-verificacao/<execução>`.
-
-O preflight exige ambiente `testing`, driver `sqlite`, banco `/verificacao/notas.sqlite`, sessão `cookie`, cache `array` e configuração em cache ativa. Qualquer divergência interrompe a execução. A rota `/_diagnostico/ambiente-verificacao` só existe em testes e responde 404 na aplicação normal.
-
-O teste de aborto usa um servidor falso com configuração incompatível, sem acessar o MySQL principal. Iniciar novamente com o mesmo identificador recria o ambiente descartável; use nomes diferentes para manter execuções separadas.
-
-### MySQL descartável
-
-Para verificar transações e concorrência no MySQL 8.4:
-
-```bash
-./tests/e2e/iniciar-mysql-isolado.sh expansoes_mysql 8007
-./tests/e2e/testar-mysql-isolado.sh expansoes_mysql
-python3 ./tests/e2e/verificar-concorrencia-mysql.py http://127.0.0.1:8007 notas_verificacao_expansoes_mysql ./tests/e2e/preflight-mysql-isolamento.sh
-./tests/e2e/parar-mysql-isolado.sh expansoes_mysql
-```
-
-Esses scripts também exigem confirmação HTTP do isolamento antes das gravações.
-
-## Capturas
-
-As imagens usam contas e notas fictícias em ambientes descartáveis.
-
-| Tela ou estado | Captura |
-| --- | --- |
-| Notas no celular | [Ver imagem](docs/capturas/expansoes-notas-celular.png) |
-| Filtros em 320 px | [Ver imagem](docs/capturas/padronizacao-filtros-320.png) |
-| Editor de lista | [Ver imagem](docs/capturas/padronizacao-lista-390.png) |
-| Mais ações | [Ver imagem](docs/capturas/padronizacao-mais-acoes-390.png) |
-| Arquivadas vazia | [Ver imagem](docs/capturas/padronizacao-arquivadas-vazia-390.png) |
-| Lixeira vazia | [Ver imagem](docs/capturas/padronizacao-lixeira-vazia-390.png) |
-| Compartilhamentos no desktop | [Ver imagem](docs/capturas/padronizacao-compartilhamentos-desktop.png) |
-| Compartilhamentos em 320 px | [Ver imagem](docs/capturas/padronizacao-compartilhamentos-320.png) |
-| Lembretes no desktop | [Ver imagem](docs/capturas/expansoes-lembretes-desktop.png) |
-| Lembretes sem agendamentos | [Ver imagem](docs/capturas/padronizacao-lembretes-vazio-390.png) |
-| Aviso após criar uma nota | [Ver imagem](docs/capturas/padronizacao-aviso-1440.png) |
-| Select de tipo | [Ver imagem](docs/capturas/padronizacao-select-390.png) |
-| Criação e edição offline | [Ver imagem](docs/capturas/expansoes-offline-celular.png) |
-
-## Versões de referência
-
-Ambiente registrado em 21/09/2026:
-
-| Componente | Versão |
-| --- | --- |
-| Laravel Framework / esqueleto | 13.32.0 / 13.10.1 |
-| Sail | 1.67.0 |
-| PHP | 8.5.10 |
-| MySQL | 8.4.11 |
-| Breeze | 2.4.2, Blade |
-| PHPUnit | 12.5.35 |
-| Pint | 1.32.1 |
-| Composer | 2.10.3 |
-| Node.js / npm | 24.21.0 / 12.0.2 |
-| Vite / plugin Laravel | 8.3.0 / 3.2.0 |
-| Tailwind CSS / Alpine.js | 3.4.19 / 3.17.3 |
-| Mailpit | 1.31.2 |
-| Docker Engine | 29.8.0 |
-
-As versões das dependências PHP e JavaScript estão fixadas em `composer.lock` e `package-lock.json`.
 
 ## Licenças e documentação
 
-Consulte as [licenças e atribuições](docs/atribuicoes.md) das ferramentas utilizadas e a [documentação do modelo de dados](docs/modelo-nota.md).
+Consulte as [licenças](docs/licencas) das ferramentas utilizadas e a [documentação do modelo de dados](docs/modelo-nota.md).
