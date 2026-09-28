@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Etiqueta;
 use App\Models\Nota;
 use App\Services\DesfazerService;
+use App\Support\ConsultaRetorno;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -101,11 +102,11 @@ class LoteNotaController extends Controller
                 $request->user(),
                 $dados['acao'] === 'lixeira' ? 'lixeira' : 'arquivamento',
                 $itensDesfazer,
-                ['rota' => $this->rotaSecao($dados['secao']), 'consulta' => $this->consulta($request)],
+                ['rota' => $this->rotaSecao($dados['secao']), 'consulta' => ConsultaRetorno::consultaRetorno($request)],
             );
         }, 3);
 
-        $resposta = redirect()->route($this->rotaSecao($dados['secao']), $this->consulta($request))
+        $resposta = redirect()->route($this->rotaSecao($dados['secao']), ConsultaRetorno::consultaRetorno($request))
             ->with('sucesso', 'Ação aplicada a '.count($ids).' notas.');
         if ($operacao) {
             $resposta->with('desfazer', $operacao->token);
@@ -149,12 +150,5 @@ class LoteNotaController extends Controller
             'lixeira' => 'lixeira.index',
             default => 'notas.inicio',
         };
-    }
-
-    private function consulta(Request $request): array
-    {
-        return collect($request->only(['q', 'ordem', 'etiquetas']))
-            ->reject(fn ($valor) => $valor === null || $valor === '' || $valor === [])
-            ->all();
     }
 }

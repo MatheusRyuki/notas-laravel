@@ -14,6 +14,7 @@ use App\Http\Requests\UpdateNotaRequest;
 use App\Models\Nota;
 use App\Services\DesfazerService;
 use App\Support\BuscaNotas;
+use App\Support\ConsultaRetorno;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -45,7 +46,7 @@ class NotaController extends Controller
             $this->salvarItens($nota, $request->validated('itens', []));
         });
 
-        return redirect()->route('notas.inicio', $this->consultaRetorno($request))
+        return redirect()->route('notas.inicio', ConsultaRetorno::consultaRetorno($request))
             ->with('sucesso', 'Nota criada com sucesso.');
     }
 
@@ -116,7 +117,7 @@ class NotaController extends Controller
             }
         }, 3);
 
-        return redirect()->route('notas.inicio', $this->consultaRetorno($request))
+        return redirect()->route('notas.inicio', ConsultaRetorno::consultaRetorno($request))
             ->with('sucesso', $desejado ? 'Nota fixada com sucesso.' : 'Nota desafixada com sucesso.');
     }
 
@@ -144,14 +145,14 @@ class NotaController extends Controller
                 'revisao_esperada' => $atual->revisao,
             ]], [
                 'rota' => $desejado ? 'notas.inicio' : 'notas.arquivadas',
-                'consulta' => $this->consultaRetorno($request),
+                'consulta' => ConsultaRetorno::consultaRetorno($request),
             ]);
         });
 
         $rota = $desejado ? 'notas.inicio' : 'notas.arquivadas';
         $mensagem = $desejado ? 'Nota arquivada com sucesso.' : 'Nota desarquivada com sucesso.';
 
-        $resposta = redirect()->route($rota, $this->consultaRetorno($request))->with('sucesso', $mensagem);
+        $resposta = redirect()->route($rota, ConsultaRetorno::consultaRetorno($request))->with('sucesso', $mensagem);
         if ($operacao) {
             $resposta->with('desfazer', $operacao->token);
         }
@@ -176,11 +177,11 @@ class NotaController extends Controller
                 'revisao_esperada' => $atual->revisao,
             ]], [
                 'rota' => $rotaRetorno,
-                'consulta' => $this->consultaRetorno($request),
+                'consulta' => ConsultaRetorno::consultaRetorno($request),
             ]);
         });
 
-        return redirect()->route($rotaRetorno, $this->consultaRetorno($request))
+        return redirect()->route($rotaRetorno, ConsultaRetorno::consultaRetorno($request))
             ->with('sucesso', 'Nota movida para a lixeira.')
             ->with('desfazer', $operacao->token);
     }
@@ -266,13 +267,6 @@ class NotaController extends Controller
         }
 
         return $validas;
-    }
-
-    private function consultaRetorno(Request $request): array
-    {
-        return collect($request->only(['q', 'ordem', 'etiquetas']))
-            ->reject(fn ($valor) => $valor === null || $valor === '' || $valor === [])
-            ->all();
     }
 
     private function aplicarAparencia(Nota $nota, array $dados): void
