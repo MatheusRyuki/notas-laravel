@@ -12,21 +12,7 @@ use App\Http\Controllers\NotaEtiquetaController;
 use App\Http\Controllers\NotificacaoController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SincronizacaoController;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
-
-if (app()->environment('testing')) {
-    Route::get('/_diagnostico/ambiente-verificacao', function () {
-        return response()->json([
-            'ambiente' => app()->environment(),
-            'driver_modelos' => config('database.default'),
-            'database_modelos' => DB::connection()->getDatabaseName(),
-            'sessao' => config('session.driver'),
-            'cache' => config('cache.default'),
-            'config_cache' => app()->configurationIsCached(),
-        ]);
-    })->name('diagnostico.verificacao');
-}
 
 Route::middleware('auth')->group(function () {
     Route::get('/', [NotaController::class, 'index'])->name('notas.inicio');

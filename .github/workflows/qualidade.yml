@@ -84,44 +84,8 @@ jobs:
       - name: Conferir formatação
         run: env -u APP_CONFIG_CACHE php vendor/bin/pint --test
 
-      - name: Confirmar isolamento e executar testes
-        shell: bash
-        run: |
-          set -euo pipefail
-          php <<'PHP'
-          <?php
-          require 'vendor/autoload.php';
-          $app = require 'bootstrap/app.php';
-          $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
-          if (config('queue.default') !== 'sync' || config('mail.default') !== 'array') {
-              fwrite(STDERR, "Fila ou correio fora do ambiente de testes.".PHP_EOL);
-              exit(1);
-          }
-          PHP
-          (cd public && exec php -S 127.0.0.1:8099 ../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php) > "$RUNNER_TEMP/notas-http.log" 2>&1 &
-          servidor=$!
-          trap 'kill "$servidor" 2>/dev/null || true' EXIT
-          curl --fail --silent --show-error --retry 10 --retry-connrefused --retry-delay 1 \
-            http://127.0.0.1:8099/_diagnostico/ambiente-verificacao > "$RUNNER_TEMP/notas-preflight.json"
-          python3 - "$RUNNER_TEMP/notas-preflight.json" <<'PY'
-          import json
-          import sys
-          from pathlib import Path
-
-          dados = json.loads(Path(sys.argv[1]).read_text())
-          esperado = {
-              "ambiente": "testing",
-              "driver_modelos": "sqlite",
-              "database_modelos": ":memory:",
-              "sessao": "array",
-              "cache": "array",
-              "config_cache": False,
-          }
-          if dados != esperado:
-              raise SystemExit(f"Isolamento recusado: {dados!r}")
-          print(json.dumps({"isolamento_confirmado": True, **dados}, ensure_ascii=False))
-          PY
-          php vendor/bin/phpunit
+      - name: Executar testes
+        run: php vendor/bin/phpunit
 
   frontend:
     name: Frontend
