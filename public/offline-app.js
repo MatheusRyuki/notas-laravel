@@ -46,10 +46,13 @@ function payloadFormulario() {
         titulo: $('#titulo').value.trim() || null,
         descricao: $('#descricao').value.trim() || null,
         tipo_conteudo: $('#tipo').value,
-        itens: $('#itens').value.split('\n').map((linha) => {
+        itens: $('#itens').value.split('\n').map((linha, posicao) => {
             const texto = linha.trim();
             const concluido = /^\[x\]\s*/i.test(texto);
-            return { texto: texto.replace(/^\[[x ]\]\s*/i, '').trim(), concluido };
+            const item = { texto: texto.replace(/^\[[x ]\]\s*/i, '').trim(), concluido };
+            const original = editando?.itens?.[posicao];
+            if (original?.id != null && original.texto === item.texto) item.id = original.id;
+            return item;
         }).filter((item) => item.texto),
         tipo_aparencia: aparencia[0],
         cor: aparencia[0] === 'cor' ? aparencia[1] : 'padrao',
