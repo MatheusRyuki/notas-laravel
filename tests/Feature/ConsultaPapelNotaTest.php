@@ -16,27 +16,37 @@ class ConsultaPapelNotaTest extends TestCase
         $dono = User::factory()->create();
         $leitor = User::factory()->create();
         $outro = User::factory()->create();
-        for ($indice = 0; $indice < 10; $indice++) {
-            $nota = $dono->notas()->create(['titulo' => 'Compartilhada '.$indice]);
-            $nota->participantes()->attach($leitor->id, ['papel' => 'leitor']);
-            $nota->participantes()->attach($outro->id, ['papel' => 'editor']);
-        }
         $this->actingAs($leitor);
+        $medicoes = [];
 
-        foreach (['notas.inicio' => 6, 'sincronizacao.bootstrap' => 4] as $rota => $limite) {
-            DB::enableQueryLog();
-            DB::flushQueryLog();
-            $resposta = $this->getJson(route($rota))->assertOk();
-            $quantidade = count(DB::getQueryLog());
-            DB::disableQueryLog();
-            $this->assertLessThanOrEqual($limite, $quantidade);
-            if ($rota === 'notas.inicio') {
-                $resposta->assertJsonPath('total', 10);
-            } else {
-                $resposta->assertJsonCount(10, 'notas')
-                    ->assertJsonPath('notas.0.papel', 'leitor')
-                    ->assertJsonPath('notas.0.pode_editar', false);
+        foreach ([1, 20] as $total) {
+            while ($dono->notas()->count() < $total) {
+                $nota = $dono->notas()->create(['titulo' => 'Compartilhada']);
+                $nota->participantes()->attach($leitor->id, ['papel' => 'leitor']);
+                $nota->participantes()->attach($outro->id, ['papel' => 'editor']);
             }
+
+            foreach (['notas.inicio', 'sincronizacao.bootstrap'] as $rota) {
+                DB::enableQueryLog();
+                DB::flushQueryLog();
+                try {
+                    $resposta = $this->getJson(route($rota))->assertOk();
+                    $medicoes[$rota][$total] = count(DB::getQueryLog());
+                } finally {
+                    DB::disableQueryLog();
+                }
+                if ($rota === 'notas.inicio') {
+                    $resposta->assertJsonPath('total', $total);
+                } else {
+                    $resposta->assertJsonCount($total, 'notas')
+                        ->assertJsonPath('notas.0.papel', 'leitor')
+                        ->assertJsonPath('notas.0.pode_editar', false);
+                }
+            }
+        }
+
+        foreach ($medicoes as $rota => $quantidades) {
+            $this->assertEquals($quantidades[1], $quantidades[20], $rota);
         }
     }
 }
