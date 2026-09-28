@@ -23,6 +23,7 @@ class NotaPayloadService
             'descricao' => ['nullable', 'string', 'max:10000'],
             'tipo_conteudo' => ['required', $nota ? Rule::in([$tipo]) : new Enum(TipoNota::class)],
             'itens' => [$tipo === TipoNota::Lista->value ? 'required' : 'nullable', 'array', 'max:100'],
+            'itens.*.id' => ['nullable', 'integer', 'distinct'],
             'itens.*.texto' => ['required', 'string', 'max:500'],
             'itens.*.concluido' => ['nullable', 'boolean'],
             'tipo_aparencia' => ['required', new Enum(TipoAparencia::class)],
@@ -34,6 +35,7 @@ class NotaPayloadService
         $dados['titulo'] = $this->limpar($dados['titulo'] ?? null);
         $dados['descricao'] = $this->limpar($dados['descricao'] ?? null);
         $dados['itens'] = collect($dados['itens'] ?? [])->map(fn ($item) => [
+            'id' => $item['id'] ?? null,
             'texto' => $this->limpar($item['texto'] ?? null),
             'concluido' => (bool) ($item['concluido'] ?? false),
         ])->filter(fn ($item) => $item['texto'] !== null)->values()->all();
@@ -56,40 +58,56 @@ class NotaPayloadService
             'tipo_conteudo' => $dados['tipo_conteudo'],
         ]);
 
-        $tipoAparencia = TipoAparencia::from($dados['tipo_aparencia']);
-        if ($tipoAparencia === TipoAparencia::Imagem) {
+        if (array_key_exists('tipo_aparencia', $dados)) {
+            $this->aplicarAparencia($nota, $dados);
+        }
+        $nota->save();
+        $this->salvarItens($nota, $dados['itens'] ?? []);
+    }
+
+    private function aplicarAparencia(Nota $nota, array $dados): void
+    {
+        $tipo = TipoAparencia::from($dados['tipo_aparencia']);
+        if ($tipo === TipoAparencia::Imagem) {
             $fundo = FundoNota::from($dados['fundo']);
-            $nota->forceFill([
-                'tipo_aparencia' => $tipoAparencia,
-                'cor' => null,
-                'caminho_imagem' => $fundo->caminho(),
-            ]);
-        } else {
-            $cor = CorNota::from($dados['cor']);
-            $nota->forceFill([
-                'tipo_aparencia' => $tipoAparencia,
-                'cor' => $cor === CorNota::Padrao ? null : $cor,
-                'caminho_imagem' => null,
-            ]);
+            $nota->forceFill(['tipo_aparencia' => $tipo, 'cor' => null, 'caminho_imagem' => $fundo->caminho()]);
+
+            return;
         }
 
-        $nota->save();
-        if ($nota->tipo_conteudo === TipoNota::Lista) {
-            $nota->itens()->update(['posicao' => DB::raw('posicao + 1000')]);
-            $ids = [];
-            foreach (array_values($dados['itens']) as $posicao => $itemDados) {
-                $item = $nota->itens()->make([
-                    'texto' => $itemDados['texto'],
-                    'concluido' => $itemDados['concluido'],
-                    'posicao' => $posicao,
-                ]);
-                $item->save();
-                $ids[] = $item->id;
-            }
-            $nota->itens()->whereNotIn('id', $ids)->delete();
-        } else {
+        $cor = CorNota::from($dados['cor']);
+        $nota->forceFill([
+            'tipo_aparencia' => TipoAparencia::Cor,
+            'cor' => $cor === CorNota::Padrao ? null : $cor,
+            'caminho_imagem' => null,
+        ]);
+    }
+
+    private function salvarItens(Nota $nota, array $itens): void
+    {
+        if ($nota->tipo_conteudo !== TipoNota::Lista) {
             $nota->itens()->delete();
+
+            return;
         }
+
+        $nota->itens()->update(['posicao' => DB::raw('posicao + 1000')]);
+        $idsMantidos = [];
+        foreach (array_values($itens) as $posicao => $dados) {
+            $item = isset($dados['id'])
+                ? $nota->itens()->whereKey($dados['id'])->first()
+                : null;
+            $item ??= $nota->itens()->make();
+            $item->fill([
+                'texto' => $dados['texto'],
+                'concluido' => (bool) ($dados['concluido'] ?? false),
+                'posicao' => $posicao,
+            ]);
+            $item->save();
+            $idsMantidos[] = $item->id;
+        }
+
+        $nota->itens()->whereNotIn('id', $idsMantidos)->delete();
     }
 
     public function representar(Nota $nota, User $usuario): array
@@ -104,6 +122,7 @@ class NotaPayloadService
             'descricao' => $nota->descricao,
             'tipo_conteudo' => $nota->tipo_conteudo->value,
             'itens' => $nota->itens->map(fn ($item) => [
+                'id' => $item->id,
                 'texto' => $item->texto,
                 'concluido' => $item->concluido,
                 'posicao' => $item->posicao,

@@ -3,9 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Enums\CorNota;
-use App\Enums\FundoNota;
-use App\Enums\TipoAparencia;
-use App\Enums\TipoNota;
 use App\Http\Requests\ArquivarNotaRequest;
 use App\Http\Requests\BuscarNotasRequest;
 use App\Http\Requests\FixarNotaRequest;
@@ -13,6 +10,7 @@ use App\Http\Requests\StoreNotaRequest;
 use App\Http\Requests\UpdateNotaRequest;
 use App\Models\Nota;
 use App\Services\DesfazerService;
+use App\Services\NotaPayloadService;
 use App\Support\BuscaNotas;
 use App\Support\ConsultaRetorno;
 use Illuminate\Database\Eloquent\Builder;
@@ -36,14 +34,12 @@ class NotaController extends Controller
         return $this->listagem($request, true);
     }
 
-    public function store(StoreNotaRequest $request): RedirectResponse
+    public function store(StoreNotaRequest $request, NotaPayloadService $payloads): RedirectResponse
     {
-        DB::transaction(function () use ($request): void {
+        DB::transaction(function () use ($request, $payloads): void {
             $nota = new Nota;
-            $nota->fill($request->safe()->only(['titulo', 'descricao', 'tipo_conteudo']));
-            $this->aplicarAparencia($nota, $request->validated());
-            $request->user()->notas()->save($nota);
-            $this->salvarItens($nota, $request->validated('itens', []));
+            $nota->usuario()->associate($request->user());
+            $payloads->aplicar($nota, $request->validated());
         });
 
         return redirect()->route('notas.inicio', ConsultaRetorno::consultaRetorno($request))
@@ -58,11 +54,11 @@ class NotaController extends Controller
         return response()->json($this->representarNota($nota, $request));
     }
 
-    public function update(UpdateNotaRequest $request, Nota $nota): JsonResponse
+    public function update(UpdateNotaRequest $request, Nota $nota, NotaPayloadService $payloads): JsonResponse
     {
         $dados = $request->validated();
 
-        $resultado = DB::transaction(function () use ($request, $nota, $dados): Nota|JsonResponse {
+        $resultado = DB::transaction(function () use ($request, $nota, $dados, $payloads): Nota|JsonResponse {
             $atual = Nota::query()->whereKey($nota->id)->lockForUpdate()->firstOrFail();
             Gate::authorize('update', $atual);
 
@@ -78,11 +74,7 @@ class NotaController extends Controller
                 ], 409);
             }
 
-            $atual->fill($request->safe()->only(['titulo', 'descricao']));
-            if (array_key_exists('tipo_aparencia', $dados)) {
-                $this->aplicarAparencia($atual, $dados);
-            }
-            $this->salvarItens($atual, $dados['itens'] ?? []);
+            $payloads->aplicar($atual, $dados);
             $atual->avancarRevisao();
             $atual->save();
 
@@ -267,51 +259,6 @@ class NotaController extends Controller
         }
 
         return $validas;
-    }
-
-    private function aplicarAparencia(Nota $nota, array $dados): void
-    {
-        $tipo = TipoAparencia::from($dados['tipo_aparencia']);
-        if ($tipo === TipoAparencia::Imagem) {
-            $fundo = FundoNota::from($dados['fundo']);
-            $nota->forceFill(['tipo_aparencia' => $tipo, 'cor' => null, 'caminho_imagem' => $fundo->caminho()]);
-
-            return;
-        }
-
-        $cor = CorNota::from($dados['cor']);
-        $nota->forceFill([
-            'tipo_aparencia' => TipoAparencia::Cor,
-            'cor' => $cor === CorNota::Padrao ? null : $cor,
-            'caminho_imagem' => null,
-        ]);
-    }
-
-    private function salvarItens(Nota $nota, array $itens): void
-    {
-        if ($nota->tipo_conteudo !== TipoNota::Lista) {
-            $nota->itens()->delete();
-
-            return;
-        }
-
-        $nota->itens()->update(['posicao' => DB::raw('posicao + 1000')]);
-        $idsMantidos = [];
-        foreach (array_values($itens) as $posicao => $dados) {
-            $item = isset($dados['id'])
-                ? $nota->itens()->whereKey($dados['id'])->first()
-                : null;
-            $item ??= $nota->itens()->make();
-            $item->fill([
-                'texto' => $dados['texto'],
-                'concluido' => (bool) ($dados['concluido'] ?? false),
-                'posicao' => $posicao,
-            ]);
-            $item->save();
-            $idsMantidos[] = $item->id;
-        }
-
-        $nota->itens()->whereNotIn('id', $idsMantidos)->delete();
     }
 
     private function representarNota(Nota $nota, Request $request): array
