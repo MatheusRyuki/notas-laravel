@@ -21,6 +21,31 @@ A interface está em português, com Blade, Alpine.js e Tailwind CSS. O visual e
 - Consulta, criação e edição offline, com sincronização e resolução de conflitos.
 - Cadastro, login, recuperação de senha e atualização do perfil.
 
+## Decisões técnicas
+
+### Concorrência na edição
+Cada nota tem uma coluna `revisao` que sobe a cada alteração. Ao salvar, o cliente manda a revisão que tinha em mãos; o servidor trava a linha com `lockForUpdate` dentro de uma transação e compara. Se a revisão mudou, ninguém sobrescreve ninguém: a API responde 409 com as duas versões e a tela deixa o usuário escolher qual manter.
+
+Escolhi isso em vez de "o último a salvar vence" porque as notas podem ser compartilhadas com permissão de edição. Com duas pessoas editando, o último salvamento apagaria o trabalho da outra sem aviso.
+
+### Sincronização offline
+Toda operação feita offline ganha um UUID no navegador. O servidor grava esse UUID junto com o resultado em `operacoes_sincronizacao`. Se a resposta se perde e o cliente reenvia a mesma operação, o servidor devolve o resultado já gravado em vez de aplicar de novo, então a nota não duplica. Na criação, o ID local vira o `uuid_sincronizacao` da nota, pelo mesmo motivo.
+
+Na repetição eu confiro a permissão de novo. Entre a primeira tentativa e o reenvio, o dono pode ter revogado o acesso ou rebaixado a pessoa para leitura; nesse caso a resposta é `revogado_ou_excluido` ou `somente_leitura`, e a alteração não é aplicada.
+
+### Autorização
+As regras ficam na `NotaPolicy` (ver, editar, gerenciar estado, compartilhar, restaurar, excluir) e as listagens partem do escopo `acessiveisPor`, que só traz notas próprias ou compartilhadas com o usuário. O dono é sempre o usuário da sessão: a nota é criada por `$request->user()->notas()`, e `usuario_id` não está no `fillable`. Mandar outro `usuario_id` no formulário simplesmente é ignorado.
+
+Ações em lote validam todas as notas antes de alterar qualquer uma. Se uma falhar, o lote inteiro é recusado.
+
+### Um N+1 que corrigi
+Revisando o projeto, achei que `papelDe()` fazia uma consulta por nota compartilhada: uma por cartão na listagem e duas por nota no endpoint de bootstrap do modo offline. Passei a carregar os participantes junto com as notas, filtrados pelo usuário, e o método usa a relação já carregada. O teste compara a listagem e o bootstrap com 1 e com 20 notas compartilhadas e exige o mesmo número de consultas nos dois casos, para o problema não voltar.
+
+### Limitações conhecidas
+- A edição offline de listas é feita em um campo de texto, uma linha por item. Um item só mantém o ID se continuar na mesma posição com o mesmo texto; se mudar, é recriado.
+- Não há paginação: a listagem e o bootstrap carregam todas as notas acessíveis. Para o uso pessoal está ok, mas é o próximo ponto a resolver.
+- Compartilhamento, lembretes, etiquetas e ações destrutivas precisam de conexão.
+
 ## Executar localmente
 
 Você precisa de Git, Docker com Compose e internet para baixar as dependências. No Windows, use o Ubuntu no WSL2 com a integração do Docker Desktop habilitada. No Linux, use Docker Engine com Compose.
