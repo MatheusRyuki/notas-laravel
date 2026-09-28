@@ -16,7 +16,11 @@ class SincronizacaoController extends Controller
     {
         $notas = Nota::query()
             ->acessiveisPor($request->user())
-            ->with(['itens', 'usuario'])
+            ->with([
+                'itens',
+                'usuario',
+                'participantes' => fn ($q) => $q->whereKey($request->user()->id),
+            ])
             ->orderBy('id')
             ->get()
             ->map(fn (Nota $nota) => $payloads->representar($nota, $request->user()))

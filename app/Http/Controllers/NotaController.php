@@ -199,6 +199,7 @@ class NotaController extends Controller
             ->with([
                 'itens',
                 'usuario:id,name',
+                'participantes' => fn ($q) => $q->whereKey($request->user()->id),
                 'etiquetas' => fn ($q) => $q->where('etiqueta_nota.usuario_id', $request->user()->id),
             ]);
 
