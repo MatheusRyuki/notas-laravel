@@ -7,6 +7,7 @@ use App\Jobs\EnviarEmailLembrete;
 use App\Models\Etiqueta;
 use App\Models\Lembrete;
 use App\Models\Nota;
+use App\Models\NotificacaoInterna;
 use App\Models\OperacaoDesfazer;
 use App\Models\User;
 use Carbon\Carbon;
@@ -266,6 +267,30 @@ class ExpansoesProdutoTest extends TestCase
 
         Carbon::setTestNow();
         CarbonImmutable::setTestNow();
+    }
+
+    public function test_notificacao_usa_o_fuso_do_usuario(): void
+    {
+        Carbon::setTestNow('2026-10-12 14:44:00');
+        $usuario = User::factory()->create(['fuso_horario' => 'America/Sao_Paulo']);
+        $nota = $this->nota($usuario, ['titulo' => 'Compras']);
+        NotificacaoInterna::create([
+            'usuario_id' => $usuario->id,
+            'nota_id' => $nota->id,
+            'tipo' => 'lembrete',
+            'chave' => 'lembrete:fuso',
+            'dados' => ['titulo' => 'Compras'],
+        ]);
+
+        $this->actingAs($usuario)->get(route('lembretes.index'))
+            ->assertOk()
+            ->assertSee('12/10/2026 11:44')
+            ->assertDontSee('12/10/2026 14:44');
+
+        $usuario->update(['fuso_horario' => 'UTC']);
+        $this->get(route('lembretes.index'))->assertSee('12/10/2026 14:44');
+
+        Carbon::setTestNow();
     }
 
     public function test_convite_papeis_revogacao_e_conflito_de_revisao(): void

@@ -68,7 +68,7 @@
                         <span class="icone-linha-lembrete" aria-hidden="true"><x-icone nome="lembrete" /></span>
                         <div class="conteudo-linha-lembrete">
                             <strong>{{ $notificacao->dados['titulo'] ?? 'Lembrete' }}</strong>
-                            <time datetime="{{ $notificacao->created_at->toIso8601String() }}">{{ $notificacao->created_at->format('d/m/Y H:i') }}</time>
+                            <time datetime="{{ $notificacao->created_at->toIso8601String() }}">{{ $notificacao->created_at->setTimezone(auth()->user()->fuso_horario)->format('d/m/Y H:i') }}</time>
                             <span class="estado-lembrete">{{ $notificacao->lida_em ? 'Lida' : 'Não lida' }}</span>
                         </div>
                         @unless($notificacao->lida_em)
