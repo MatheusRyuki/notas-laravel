@@ -88,7 +88,7 @@ class NotaFundoTest extends TestCase
         $this->assertNull($nota->caminho_imagem);
     }
 
-    public function test_identificador_de_fundo_caminho_livre_e_tipo_desconhecidos_sao_rejeitados(): void
+    public function test_fundo_invalido_e_rejeitado(): void
     {
         $usuario = User::factory()->create();
 

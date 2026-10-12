@@ -103,7 +103,7 @@ class NotaLixeiraTest extends TestCase
         $this->actingAs($usuario)->patch(route('notas.arquivamento', $nota->id), ['arquivada' => true])->assertNotFound();
     }
 
-    public function test_confirmacao_get_nao_muta_cancelamento_preserva_e_ativa_nao_pode_ser_excluida_definitivamente(): void
+    public function test_confirmacao_de_exclusao_definitiva(): void
     {
         $usuario = User::factory()->create();
         $removida = $usuario->notas()->create(['titulo' => 'Identifique esta nota', 'descricao' => 'Trecho de confirmação']);
@@ -119,7 +119,7 @@ class NotaLixeiraTest extends TestCase
         $this->assertDatabaseHas('notas', ['id' => $ativa->id]);
     }
 
-    public function test_exclusao_definitiva_remove_apenas_nota_e_preserva_fundo_compartilhado(): void
+    public function test_exclusao_definitiva_preserva_fundo(): void
     {
         $usuario = User::factory()->create();
         $excluir = $usuario->notas()->create(['titulo' => 'Excluir']);
@@ -137,7 +137,7 @@ class NotaLixeiraTest extends TestCase
         $this->assertFileExists(public_path(FundoNota::Folhas->caminho()));
     }
 
-    public function test_visitante_e_segunda_conta_nao_podem_restaurar_confirmar_ou_excluir_nota_alheia(): void
+    public function test_outra_conta_nao_mexe_na_lixeira_alheia(): void
     {
         $dono = User::factory()->create();
         $intruso = User::factory()->create();

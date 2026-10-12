@@ -70,7 +70,7 @@ class ExpansoesProdutoTest extends TestCase
         $this->assertTrue($nota->fresh()->arquivada);
     }
 
-    public function test_ordenacao_e_filtro_por_qualquer_etiqueta_respeitam_grupos_e_usuario(): void
+    public function test_ordenacao_e_filtro_por_etiqueta(): void
     {
         $usuario = User::factory()->create();
         $outro = User::factory()->create();
@@ -217,7 +217,7 @@ class ExpansoesProdutoTest extends TestCase
         $this->assertSame($revisao + 1, $nota->fresh()->revisao);
     }
 
-    public function test_lembrete_processa_uma_vez_e_lixeira_suspende_sem_disparo_retroativo(): void
+    public function test_lembrete_processa_uma_vez(): void
     {
         Queue::fake();
         Carbon::setTestNow('2026-09-22 12:00:00');

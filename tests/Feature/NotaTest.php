@@ -91,7 +91,7 @@ class NotaTest extends TestCase
         $this->assertDatabaseCount('notas', 0);
     }
 
-    public function test_listagem_mostra_apenas_notas_ativas_do_proprio_usuario_em_ordem_deterministica(): void
+    public function test_listagem_mostra_so_notas_ativas_do_usuario(): void
     {
         $usuario = User::factory()->create();
         $outroUsuario = User::factory()->create();

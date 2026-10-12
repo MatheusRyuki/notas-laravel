@@ -8,7 +8,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="font-sans antialiased pagina-acesso">
-    <header class="cabecalho-acesso"><a href="{{ route('login') }}" aria-label="Notas — entrar"><x-marca /></a><span>Um lugar para suas ideias</span></header>
+    <header class="cabecalho-acesso"><a href="{{ route('login') }}" aria-label="Notas, entrar"><x-marca /></a><span>Um lugar para suas ideias</span></header>
     <main class="acesso">
         <aside class="apresentacao">
             <span class="etiqueta">MENOS DISTRAÇÃO, MAIS ESPAÇO</span>

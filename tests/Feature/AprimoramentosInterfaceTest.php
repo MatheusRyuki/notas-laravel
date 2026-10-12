@@ -26,7 +26,7 @@ class AprimoramentosInterfaceTest extends TestCase
         $this->assertSame(3, substr_count($html, 'firstFocusable()?.focus()'));
     }
 
-    public function test_interface_remove_marcadores_internos_e_mantem_anuncios_sem_regiao_viva_aninhada(): void
+    public function test_interface_sem_marcadores_internos(): void
     {
         $usuario = User::factory()->create();
 

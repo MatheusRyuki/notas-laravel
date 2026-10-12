@@ -33,7 +33,7 @@ class PadronizacaoVisualTest extends TestCase
             ->assertDontSee('<legend>Filtrar por qualquer etiqueta</legend>', false);
     }
 
-    public function test_cartao_mantem_acoes_adicionais_recolhidas_e_nao_oferece_salvar_etiquetas_vazias(): void
+    public function test_cartao_recolhe_acoes_adicionais(): void
     {
         $usuario = User::factory()->create(['fuso_horario' => 'America/Sao_Paulo']);
         $nota = $usuario->notas()->create(['titulo' => 'Nota curta']);

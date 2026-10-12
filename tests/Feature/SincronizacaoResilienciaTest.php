@@ -37,7 +37,7 @@ class SincronizacaoResilienciaTest extends TestCase
         $this->assertSame(1, OperacaoSincronizacao::where('operacao_uuid', $operacaoUuid)->count());
     }
 
-    public function test_mudanca_de_editor_para_leitor_recusa_pendencia_e_devolve_estado_atual(): void
+    public function test_editor_rebaixado_a_leitor_recusa_pendencia(): void
     {
         $dono = User::factory()->create();
         $editor = User::factory()->create();
@@ -65,7 +65,7 @@ class SincronizacaoResilienciaTest extends TestCase
         $this->assertSame($revisaoOffline, $nota->fresh()->revisao);
     }
 
-    public function test_revogacao_e_remocao_durante_periodo_offline_nao_recriam_nota_ou_acesso(): void
+    public function test_revogacao_offline_nao_recria_nota(): void
     {
         $dono = User::factory()->create();
         $editor = User::factory()->create();

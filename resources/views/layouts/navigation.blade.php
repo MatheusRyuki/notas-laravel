@@ -1,5 +1,5 @@
 <header class="barra-superior">
-    <a href="{{ route('notas.inicio') }}" aria-label="Notas — página inicial"><x-marca /></a>
+    <a href="{{ route('notas.inicio') }}" aria-label="Notas, página inicial"><x-marca /></a>
     <div class="conta">
         <span class="nome-usuario" title="{{ Auth::user()->name }}">{{ Auth::user()->name }}</span>
         <a class="link-perfil" href="{{ route('profile.edit') }}">Meu perfil</a>

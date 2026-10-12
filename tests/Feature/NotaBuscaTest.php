@@ -41,7 +41,7 @@ class NotaBuscaTest extends TestCase
             ->assertSee('Projeto removido')->assertDontSee($ativa->titulo)->assertDontSee($arquivada->titulo);
     }
 
-    public function test_percentual_sublinhado_e_escape_sao_texto_literal(): void
+    public function test_busca_trata_curingas_como_texto(): void
     {
         $usuario = User::factory()->create();
         $usuario->notas()->create(['titulo' => 'Taxa 100% real']);

@@ -1,4 +1,4 @@
-# Modelo Nota — implementado
+# Modelo Nota - implementado
 
 O model `App\Models\Nota` usa explicitamente a tabela `notas`, `SoftDeletes` e a relação `usuario()`. O model `User` expõe a relação `notas()`.
 
