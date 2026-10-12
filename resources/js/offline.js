@@ -176,6 +176,7 @@ async function limparPrivado() {
 
 export async function iniciarOffline() {
     if (!('indexedDB' in window) || !('serviceWorker' in navigator)) return;
+    if (!document.getElementById('estado-offline')) return;
 
     try {
         await navigator.serviceWorker.register('/sw.js');
